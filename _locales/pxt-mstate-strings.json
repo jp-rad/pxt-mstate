@@ -1,0 +1,15 @@
+{
+  "mstate.convName|block": "name of $id",
+  "mstate.declareDo|block": "on do every $ms ms : $state",
+  "mstate.declareEntry|block": "on entry from $prev : $state",
+  "mstate.declareExit|block": "on exit to $next : $state",
+  "mstate.declareTransition|block": "trasition to $to when $trigger : $from",
+  "mstate.defineStateName|block": "define $STATE to $state",
+  "mstate.fire|block": "fire $trigger",
+  "mstate.start|block": "start $state",
+  "mstate|block": "mstate",
+  "{id:category}Mstate": "Mstate",
+  "{id:group}Action": "Action",
+  "{id:group}Command": "Command",
+  "{id:group}Transition": "Transition"
+}

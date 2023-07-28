@@ -1,7 +1,8 @@
 {
-    "name": "pxt-ubit-extension",
-    "version": "0.3.0",
-    "description": "(description: this description is written in pxt.json)",
+    "name": "pxt-mstate",
+    "version": "0.0.0",
+    "description": "Let's try state machine with micro:bit!",
+    "license": "MIT",
     "dependencies": {
         "core": "*"
     },
@@ -9,10 +10,7 @@
         "README.md",
         "enums.d.ts",
         "shims.d.ts",
-        "custom.ts",
-        "custom.cpp",
-        "lib/customlib.h",
-        "lib/customlib.cpp"
+        "mstate.ts"
     ],
     "testFiles": [
         "test.ts"
