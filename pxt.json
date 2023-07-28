@@ -1,0 +1,28 @@
+{
+    "name": "pxt-ubit-extension",
+    "version": "0.3.0",
+    "description": "(description: this description is written in pxt.json)",
+    "dependencies": {
+        "core": "*"
+    },
+    "files": [
+        "README.md",
+        "enums.d.ts",
+        "shims.d.ts",
+        "custom.ts",
+        "custom.cpp",
+        "lib/customlib.h",
+        "lib/customlib.cpp"
+    ],
+    "testFiles": [
+        "test.ts"
+    ],
+    "targetVersions": {
+        "target": "6.0.17",
+        "targetId": "microbit"
+    },
+    "supportedTargets": [
+        "microbit"
+    ],
+    "preferredEditor": "tsprj"
+}
