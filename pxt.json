@@ -1,6 +1,6 @@
 {
     "name": "pxt-mstate",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "description": "Let's try state machine with micro:bit!",
     "license": "MIT",
     "dependencies": {
