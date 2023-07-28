@@ -1,5 +1,5 @@
 
-> Open this page at GitHub Pages: [https://jp-rad.github.io/pxt-ubit-extension/](https://jp-rad.github.io/pxt-ubit-extension/)
+> Open this page at GitHub Pages: [https://jp-rad.github.io/pxt-mstate/](https://jp-rad.github.io/pxt-mstate/)
 
 ## Creating Extensions
 
@@ -14,15 +14,15 @@ This repository can be added as an **extension** in MakeCode.
 * open [https://makecode.microbit.org/](https://makecode.microbit.org/)
 * click on **New Project**
 * click on **Extensions** under the gearwheel menu
-* search for **https://github.com/jp-rad/pxt-ubit-extension** and import
+* search for **https://github.com/jp-rad/pxt-mstate** and import
 
-## Edit this project ![Build status badge](https://github.com/jp-rad/pxt-ubit-extension/workflows/MakeCode/badge.svg)
+## Edit this project ![Build status badge](https://github.com/jp-rad/pxt-mstate/workflows/MakeCode/badge.svg)
 
 To edit this repository in MakeCode.
 
 * open [https://makecode.microbit.org/](https://makecode.microbit.org/)
 * click on **Import** then click on **Import URL**
-* paste **https://github.com/jp-rad/pxt-ubit-extension** and click import
+* paste **https://github.com/jp-rad/pxt-mstate** and click import
 
 ## Blocks preview
 
@@ -30,9 +30,9 @@ To edit this repository in MakeCode.
 This image shows the blocks code from the last commit in master.
 This image may take a few minutes to refresh.
 
-![A rendered view of the blocks](https://github.com/jp-rad/pxt-ubit-extension/raw/master/.github/makecode/blocks.png)
+![A rendered view of the blocks](https://github.com/jp-rad/pxt-mstate/raw/master/.github/makecode/blocks.png)
 -->
-![A rendered view of the blocks](https://github.com/jp-rad/pxt-ubit-extension/raw/master/.github/statics/blocks.png)
+![A rendered view of the blocks](https://github.com/jp-rad/pxt-mstate/raw/master/.github/statics/blocks.png)
 
 #### Metadata (used for search, rendering)
 
