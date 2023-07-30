@@ -2,7 +2,7 @@
  * mstate blocks
  */
 //% weight=100 color="#4C97FF" icon="\uf362"
-//% groups="['Action', 'Command', 'Declare', 'Transition']"
+//% groups="['Action', 'Command', 'Declare', 'Design', 'Transition']"
 namespace mstate {
 
     const CHAR_ASTERISK = "*"   // asterisk charactor "*"
@@ -489,7 +489,7 @@ namespace mstate {
         }
     }
 
-    // { id: 0, name: "" } を追加 - const TRIGGER_NONE = 0      // ""(completion)
+    // default ID { id: 0, name: "" } - const TRIGGER_NONE = 0      // ""(completion)
     getIdOrNew("")
 
     // state machine
@@ -617,15 +617,40 @@ namespace mstate {
     }
 
     /**
-     * start state machine
-     * @param state default state
+     * declare selectable transition.
+     * @param from state from
+     * @param toList array of state to
+     * @param trigger trigger
+     * @param body code to run
      */
-    //% block="start $state"
+    //% block="trasition to $toList when $trigger : $from"
+    //% from.defl="State1"
+    //% trigger.defl="Trigger1"
+    //% handlerStatement
+    //% weight=90
+    //% group="Transition"
+    export function declareTransitionSelectable(from: string, toList: string[], trigger: string, body: () => void) {
+        // trigger: "*" --> ""(completion)
+        if (CHAR_ASTERISK == trigger) {
+            trigger = ""
+        }
+        // defaultStateMachine.declareTransition(
+        //     getIdOrNew(from),       // "*": INITIAL
+        //     getIdOrNew(to),         // "*": FINAL
+        //     getIdOrNew(trigger)     // trigger: "*" --> ""(completion)
+        // )
+    }
+
+    /**
+     * 
+     * @param state state to
+     */
+    //% block="select to: $state"
     //% state.defl="State1"
     //% weight=80
-    //% group="Command"
-    export function start(state: string) {
-        defaultStateMachine.start(getIdOrNew(state))
+    //% group="Transition"
+    export function selectTo(state: string) {
+
     }
 
     /**
@@ -634,9 +659,35 @@ namespace mstate {
      */
     //% block="fire $trigger"
     //% trigger.defl="Trigger1"
-    //% weight=90
+    //% weight=70
     //% group="Command"
     export function fire(trigger: string) {
         defaultStateMachine.fire(getIdOrNew(trigger))
+    }
+
+    /**
+     * start state machine
+     * @param state default state
+     */
+    //% block="start $state"
+    //% state.defl="State1"
+    //% weight=60
+    //% group="Command"
+    export function start(state: string) {
+        defaultStateMachine.start(getIdOrNew(state))
+    }
+    
+    /**
+     * about state
+     * @param state state
+     * @param description state description 
+     */
+    //% block="about : $state|description: $description"
+    //% state.defl="State1"
+    //% inlineInputMode=external
+    //% weight=50
+    //% group="Design"
+    export function aboutState(state: string, description: string) {
+        
     }
 }
