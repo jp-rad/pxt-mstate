@@ -14,7 +14,7 @@ namespace mstate {
     const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 100
     const DEFAULT_EVENT_LOOP_INTERVAL = 100
 
-    const DEFAULT_STATE_MACHINE_NAME = "(default)"
+    const DEFAULT_STATE_MACHINE_NAME = "default"
 
     /**
      * EntryAction
@@ -167,6 +167,19 @@ namespace mstate {
         get trigger() { return this._trigger }
     }
 
+    class StateDescription {
+        _state: number
+        _description: string
+
+        constructor(state: number, description: string) {
+            this._state = state
+            this._description = description
+        }
+
+        get state() { return this._state }
+        get description() { return this._description }
+    }
+
     enum Procs {
         Idle,
         Start,
@@ -219,6 +232,9 @@ namespace mstate {
         _transitFrom: number
         _transitTo: number
 
+        // design
+        _stateDescriptions: StateDescription[]
+
         /**
          * constructor
          * The state machine ID is used as the event value, so it must be greater than 0
@@ -247,6 +263,7 @@ namespace mstate {
             this._triggerQueue = []
             this._transitFrom = STATE_FINAL  // terminate
             this._transitTo = STATE_INITIAL    // initial
+            this._stateDescriptions = []
         }
 
         get machineId() { return this._machineId }
@@ -271,6 +288,11 @@ namespace mstate {
         declareTransition(from: number, to: number, trigger: number) {
             const item = new Transition(from, to, trigger)
             this._declareTransitions.push(item)
+        }
+
+        addStateDescription(state: number, description: string) {
+            const item = new StateDescription(state, description)
+            this._stateDescriptions.push(item)
         }
 
         _procStart() {
@@ -507,6 +529,52 @@ namespace mstate {
         return stateMachineList[idx]
     }
 
+    function createStateMachineUml(target: StateMachine, defaultState: string, cb: (line: string) => void) {
+        let sp: string
+        const machineName = target.machineName
+        
+        sp = "" // space(0)
+
+        cb(sp + "@startuml")
+        cb(sp + "' PlantUML Web server:")
+        cb(sp + "' http://www.plantuml.com/plantuml/")
+        // top state - machine name
+        cb(sp + "state " + machineName + " {")
+
+        sp = "  " // space(2)
+
+        cb(sp + "")
+        cb(sp + "'=============")
+        cb(sp + "' description ")
+        cb(sp + "'=============")
+        for (const item of target._stateDescriptions) {
+            cb(sp + "state " + convName(item.state) + " : " + item.description)
+        }
+        cb(sp + "")
+        cb(sp + "'============")
+        cb(sp + "' transition ")
+        cb(sp + "'============")
+        cb(sp+ "[*] --> " + defaultState + " : (start)")
+        for (const item of target._declareTransitions) {
+            let triggerPart = ""
+            if (TRIGGER_NONE != item.trigger) {
+                triggerPart = " : " + convName(item.trigger)
+            }
+            cb(sp + convName(item.from) + " --> " + convName(item.to) + triggerPart)
+        }
+        // cb(sp + "")
+        // cb(sp + "'=========")
+        // cb(sp + "' declare ")
+        // cb(sp + "'=========")
+
+        cb(sp + "")
+        
+        sp = "" // space(0)
+        
+        cb(sp + "}") // top state - machine name
+        cb(sp + "@enduml")
+    }
+
     const defaultStateMachine: StateMachine = getStateMachine(createStateMachine(DEFAULT_STATE_MACHINE_NAME))
 
     /**
@@ -517,8 +585,29 @@ namespace mstate {
     //% block="define $STATE to $state"
     //% state.defl="State1"
     //% draggableParameters="reporter"
-    //% weight=150
+    //% weight=155
+    //% group="Design"
     export function defineStateName(state: string, body: (STATE: string) => void) {
+        body(state)
+    }
+
+    /**
+     * define state with description
+     * @param state state
+     * @param descriptions array of description
+     * @param body code to run
+     */
+    //% block="define $STATE to $state description: $descriptions"
+    //% state.defl="State1"
+    //% draggableParameters="reporter"
+    //% advanced=true
+    //% weight=150
+    //% group="Design"
+    export function defineStateDescription(state: string, descriptions: string[], body: (STATE: string) => void) {
+        const stateId = getIdOrNew(state)
+        for (const s of descriptions) {
+            defaultStateMachine.addStateDescription(stateId, s)    
+        }
         body(state)
     }
 
@@ -528,7 +617,9 @@ namespace mstate {
      * @returns state name (string) or trigger name (string), if undeclared: "[<id>]"
      */
     //% block="name of $id"
+    //% advanced=true
     //% weight=140
+    //% group="Action"
     export function convName(id: number): string {
         const name = convIdToName(id)
         return name == undefined ? "[" + id + "]" : name
@@ -676,18 +767,59 @@ namespace mstate {
     export function start(state: string) {
         defaultStateMachine.start(getIdOrNew(state))
     }
-    
+
     /**
-     * about state
-     * @param state state
-     * @param description state description 
+     * create UML, plantUML
+     * PlantUML Web server: http://www.plantuml.com/plantuml/
+     * @param state default state
+     * @param enabled
+     * @param body code to run
      */
-    //% block="about : $state|description: $description"
+    //% block="UML $enabled $line : $state"
     //% state.defl="State1"
-    //% inlineInputMode=external
-    //% weight=50
-    //% group="Design"
-    export function aboutState(state: string, description: string) {
-        
+    //% enabled.shadow="toggleOnOff"
+    //% enabled.defl=true
+    //% draggableParameters="reporter"
+    //% handlerStatement
+    //% advanced=true
+    //% weight=40
+    //% group="Command"
+    export function createUml(state: string, enabled: boolean, body: (line: string) => void) {
+        if (enabled) {
+            createStateMachineUml(defaultStateMachine, state, body)
+        }
+        // if (enabled) {
+        //     body("' server: http://www.plantuml.com/plantuml/")
+        //     body("@startuml")
+        //     body("state default {")
+        //     body("  ")
+        //     body("  '=============")
+        //     body("  ' description ")
+        //     body("  '=============")
+        //     body("  state State : description")
+        //     body("  ")
+        //     body("  '============")
+        //     body("  ' transition ")
+        //     body("  '============")
+        //     body("  [*] --> State: (start)")
+        //     body("  State --> A: Trigger1[to A]")
+        //     body("  State --> B: Trigger1[to B]")
+        //     body("  State --> C: Trigger1[to C]")
+        //     body("  A --> B: Trigger2")
+        //     body("  A --> C: Trigger3")
+        //     body("  B --> C")
+        //     body("  C --> [*] ")
+        //     body("  ")
+        //     body("  '=========")
+        //     body("  ' declare ")
+        //     body("  '=========")
+        //     body("  state State : (1/0/0):3")
+        //     body("  state A : (0/1/0):2")
+        //     body("  state B : (0/n/1):1")
+        //     body("  state C : (n/0/n):1")
+        //     body("  ")
+        //     body("}")
+        //     body("@enduml")
+        // }
     }
 }
