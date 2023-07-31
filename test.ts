@@ -3,7 +3,7 @@
  */
 
 // state Mode
-mstate.defineStateName("Mode", function (STATE) {
+mstate.defineStateDescription("Mode", ["do/ dispMode()"], function (STATE) {
     mstate.declareDo(STATE, 2000, function () {
         basic.showString("A")
         basic.showString("B")
@@ -80,4 +80,7 @@ function toggleLED() {
 }
 
 let blinkingState = 0
+mstate.createUml("Mode", false, function (line) {
+    console.log(line)
+})
 mstate.start("Mode")
