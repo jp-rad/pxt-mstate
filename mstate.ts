@@ -5,10 +5,9 @@
 //% groups="['Action', 'Command', 'Declare', 'Design', 'Transition']"
 namespace mstate {
 
-    const CHAR_ASTERISK = "*"   // asterisk charactor "*"
-    const STATE_INITIAL = -2    // "*"(INITIAL)
-    const STATE_FINAL = -1      // "*"(FINAL)
-    const TRIGGER_NONE = 0      // ""(completion)
+    const CHAR_ASTERISK = "*"       // asterisk charactor "*"
+    const STATE_INITIAL_FINAL = -1  // "*"(INITIAL or FINAL)
+    const TRIGGER_NONE = 0          // ""(completion)
 
     const MICROBIT_CUSTOM_ID_BASE = 32768
     const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 100
@@ -167,6 +166,53 @@ namespace mstate {
         get trigger() { return this._trigger }
     }
 
+    /**
+     * Selectable transition
+     */
+    class TransitionSelectable {
+        // declare
+        _from: number
+        _toList: number[]
+        _trigger: number
+        _cb: () => void
+
+        /**
+         * constructor
+         * @param from (States) state, transition from
+         * @param toList (States) selectabale states, arrray of transition to
+         * @param trigger (Triggers) trigger
+         * @param cb run to code for selecting state, transition to
+         */
+        constructor(from: number, toList: number[], trigger: number, cb: () => void) {
+            this._from = from
+            this._toList = toList
+            this._trigger = trigger
+            this._cb = cb
+        }
+
+        /**
+         * (States) state, transition from
+         */
+        get from() { return this._from }
+
+        /**
+         * (States) selectabale states, arrray of transition to
+         */
+        get toList() { return this._toList }
+
+        /**
+         * (Triggers) trigger
+         */
+        get trigger() { return this._trigger }
+
+        /**
+         * Callback to select state, transition to
+         */
+        cb() {
+            this._cb()
+        }
+    }
+
     class StateDescription {
         _state: number
         _description: string
@@ -180,7 +226,7 @@ namespace mstate {
         get description() { return this._description }
     }
 
-    enum Procs {
+    enum ProcStatus {
         Idle,
         Start,
         Into,
@@ -191,7 +237,7 @@ namespace mstate {
         Panic
     }
 
-    enum ProcNext {
+    enum ProcNextBehavior {
         Break,
         Loop,
         Event
@@ -206,24 +252,27 @@ namespace mstate {
         _updateEventId: number
         _eventLoopInterval: number
         _enabledUpdateEvent: boolean
+        _defaultState: number           // start
 
         // declare
         _declareEntryActions: EntryAction[]
         _declareDoActions: DoAction[]
         _declareExitActions: ExitAction[]
         _declareTransitions: Transition[]
+        _declareTransitionSelectables: TransitionSelectable[]
 
-        // current state
+        // current
         _state: number
         _entryActions: EntryAction[]
         _doActions: DoAction[]
         _exitActions: ExitAction[]
-        _transitions: Transition[]
-        _completionTransition: Transition
+        _transitions: Transition[]                              // Priority - 1: High
+        _transitionSelectables: TransitionSelectable[]          // Priority - 2: Middle (High)
+        _completionTransition: Transition                       // Priority - 3: Middle (Low)
+        _completionTransitionSelectable: TransitionSelectable   // Priority - 4: Low
 
         // proc
-        _defaultState: number
-        _procNext: Procs
+        _procNext: ProcStatus
 
         // (Triggers[]) triggers
         _triggerQueue: number[]
@@ -231,6 +280,9 @@ namespace mstate {
         // current transition
         _transitFrom: number
         _transitTo: number
+
+        // selectable taransition
+        _selectedTo: number | undefined // number: selected, undefined: unselected
 
         // design
         _stateDescriptions: StateDescription[]
@@ -242,27 +294,46 @@ namespace mstate {
          * @param name state machine name
          */
         constructor(id: number, name: string) {
+            // system
             this._machineId = id
             this._macnineName = name
             this._initialized = false
             this._updateEventId = DEFAULT_UPDATE_EVENT_ID
             this._eventLoopInterval = DEFAULT_EVENT_LOOP_INTERVAL
             this._enabledUpdateEvent = false
+            this._defaultState = STATE_INITIAL_FINAL
+
+            // declare
             this._declareEntryActions = []
             this._declareDoActions = []
             this._declareExitActions = []
             this._declareTransitions = []
-            this._state = STATE_INITIAL    // initial
+            this._declareTransitionSelectables = []
+
+            // current
+            this._state = STATE_INITIAL_FINAL
             this._entryActions = []
             this._doActions = []
             this._exitActions = []
             this._transitions = []
+            this._transitionSelectables = []
             this._completionTransition = undefined
-            this._defaultState = STATE_FINAL
-            this._procNext = Procs.Idle
+            this._completionTransitionSelectable = undefined
+
+            // proc
+            this._procNext = ProcStatus.Idle
+
+            // (Triggers[]) triggers
             this._triggerQueue = []
-            this._transitFrom = STATE_FINAL  // terminate
-            this._transitTo = STATE_INITIAL    // initial
+
+            // current transition
+            this._transitFrom = STATE_INITIAL_FINAL
+            this._transitTo = STATE_INITIAL_FINAL
+
+            // selectable taransition
+            this._selectedTo = undefined
+
+            // design
             this._stateDescriptions = []
         }
 
@@ -290,32 +361,39 @@ namespace mstate {
             this._declareTransitions.push(item)
         }
 
+        declareTransitionSelectable(from: number, toList: number[], trigger: number, cb: () => void) {
+            const item = new TransitionSelectable(from, toList, trigger, cb)
+            this._declareTransitionSelectables.push(item)
+        }
+
         addStateDescription(state: number, description: string) {
             const item = new StateDescription(state, description)
             this._stateDescriptions.push(item)
         }
 
         _procStart() {
-            this._transitFrom = STATE_INITIAL
+            this._transitFrom = STATE_INITIAL_FINAL
             this._transitTo = this._defaultState
         }
 
         _procInto() {
             const next = this._transitTo
-            // current state
+            // into current
             this._state = next
-            this._entryActions = this._declareEntryActions.filter((item) => item.state == next)
+            this._entryActions = this._declareEntryActions.filter((item) => next == item.state)
             this._doActions = this._declareDoActions.filter((item) => {
-                if (item.state == next) {
+                if (next == item.state) {
                     item.forceTick()
                     return true
                 } else {
                     return false
                 }
             })
-            this._exitActions = this._declareExitActions.filter((item) => item.state == next)
-            this._transitions = this._declareTransitions.filter((item) => item.from == next)
-            this._completionTransition = this._transitions.find((item) => item.trigger == TRIGGER_NONE)
+            this._exitActions = this._declareExitActions.filter((item) => next == item.state)
+            this._transitions = this._declareTransitions.filter((item) => next == item.from)
+            this._transitionSelectables = this._declareTransitionSelectables.filter((item) => next == item.from)
+            this._completionTransition = this._transitions.find((item) => TRIGGER_NONE == item.trigger)
+            this._completionTransitionSelectable = this._transitionSelectables.find((item) => TRIGGER_NONE == item.trigger)
         }
 
         _procEnter() {
@@ -339,87 +417,118 @@ namespace mstate {
         }
 
         _getTransition() {
-            // trigger
-            while (this._triggerQueue.length > 0) {
-                // transit
+            // triggers - Transition and/or Transition (selectable)
+            while (0 < this._triggerQueue.length) {
                 const trigger = this._triggerQueue.shift()
-                const transition = this._transitions.find((item) => item.trigger == trigger)
-                if (transition) {
-                    return transition
+                // Transition
+                if (0 < this._transitions.length) {
+                    const transition = this._transitions.find((item) => trigger == item.trigger)
+                    if (transition) {
+                        return transition
+                    }
+                }
+                // Transition (selectable)
+                if (0 < this._transitionSelectables.length) {
+                    const transition = this._transitionSelectables.find((item) => trigger == item.trigger)
+                    if (transition) {
+                        return transition
+                    }
                 }
             }
             // Completion Transition
             if (this._completionTransition) {
                 return this._completionTransition
             }
+            // Completion Transition (selectable)
+            if (this._completionTransitionSelectable) {
+                return this._completionTransitionSelectable
+            }
+            // No transitions
             return undefined
         }
 
         _procTransit(): boolean {
             const transition = this._getTransition()
-            if (transition) {
+            if (undefined == transition) {
+                return false
+            }
+            // transition
+            if (transition instanceof Transition) {
                 this._transitFrom = transition.from
                 this._transitTo = transition.to
                 return true
-            } else {
-                return false
             }
+            if (transition instanceof TransitionSelectable) {
+                this._selectedTo = undefined    // reset
+                transition.cb()                 // callback
+                const selectedTo = transition.toList.find((v) => v == this._selectedTo)
+                if (undefined == selectedTo) {
+                    // unselected or out of options
+                    return false
+                }
+                // selected
+                this._transitFrom = transition.from
+                this._transitTo = selectedTo
+                return true
+            }
+            return false
         }
 
-        _proc(): ProcNext {
-            let ret = ProcNext.Loop // (default) loop
+        _proc(): ProcNextBehavior {
+            let ret = ProcNextBehavior.Loop // (default) loop
             switch (this._procNext) {
-                case Procs.Idle:
-                    ret = ProcNext.Break    // break
+                case ProcStatus.Idle:
+                    ret = ProcNextBehavior.Break    // break
                     break;
-                case Procs.Start:
+                case ProcStatus.Start:
                     this._procStart()
-                    this._procNext = Procs.Into
-                    ret = ProcNext.Event    // event, for start() function.
+                    this._procNext = ProcStatus.Into
+                    ret = ProcNextBehavior.Event    // event, for start() function.
                     break;
-                case Procs.Into:
+                case ProcStatus.Into:
                     this._procInto()
-                    if (this._state < 0) {
-                        this._procNext = Procs.Idle
+                    if (0 > this._state) {
+                        // (INITIAL or FINAL)
+                        this._procNext = ProcStatus.Idle
                     } else {
-                        this._procNext = Procs.Enter
+                        this._procNext = ProcStatus.Enter
                     }
                     break;
-                case Procs.Enter:
+                case ProcStatus.Enter:
                     this._procEnter()
-                    this._procNext = Procs.Do
+                    this._procNext = ProcStatus.Do
                     break;
-                case Procs.Do:
+                case ProcStatus.Do:
                     this._procDo()
-                    this._procNext = Procs.Transit
-                    ret = ProcNext.Event    // event
+                    this._procNext = ProcStatus.Transit
+                    ret = ProcNextBehavior.Event    // event
                     break;
-                case Procs.Transit:
+                case ProcStatus.Transit:
                     if (this._procTransit()) {
-                        this._procNext = Procs.Exit
+                        this._procNext = ProcStatus.Exit
                     } else {
-                        this._procNext = Procs.Do
+                        this._procNext = ProcStatus.Do
                     }
                     break;
-                case Procs.Exit:
+                case ProcStatus.Exit:
                     this._procExit()
-                    this._procNext = Procs.Into
+                    this._procNext = ProcStatus.Into
                     break;
                 default:
                     // panic
-                    this._procNext = Procs.Panic
-                    ret = ProcNext.Break    // break
+                    this._procNext = ProcStatus.Panic
+                    ret = ProcNextBehavior.Break    // break
                     break;
             }
             return ret
         }
 
         _update() {
-            let next: ProcNext
+            let next: ProcNextBehavior
             do {
                 next = this._proc()
-            } while (next == ProcNext.Loop)
-            this._enabledUpdateEvent = (next == ProcNext.Event)
+            } while (ProcNextBehavior.Loop == next)
+            this._enabledUpdateEvent = (ProcNextBehavior.Event == next)
         }
 
         _raiseUpdateEvent(force: boolean = false) {
@@ -448,9 +557,9 @@ namespace mstate {
 
         start(state: number): boolean {
             this._initialize()
-            if (this._procNext == Procs.Idle) {
+            if (ProcStatus.Idle == this._procNext) {
                 this._defaultState = state
-                this._procNext = Procs.Start
+                this._procNext = ProcStatus.Start
                 this._update()
                 return true
             } else {
@@ -463,6 +572,10 @@ namespace mstate {
             this._triggerQueue.push(trigger)
             // update event
             this._raiseUpdateEvent(true)
+        }
+
+        selectTo(state: number) {
+            this._selectedTo = state
         }
     }
 
@@ -480,34 +593,27 @@ namespace mstate {
 
     let idNameList: IdName[] = []
 
-    function getIdOrNew(name: string, isFrom: boolean = false) {
+    function getIdOrNew(name: string) {
         if (CHAR_ASTERISK == name) {
-            if (isFrom) {
-                return STATE_INITIAL
-            } else {
-                return STATE_FINAL
-            }
+            return STATE_INITIAL_FINAL
         }
-        let obj = idNameList.find((item) => item.name == name)
-        if (obj == undefined) {
-            obj = new IdName(idNameList.length, name)
-            idNameList.push(obj)
+        let idName = idNameList.find((item) => name == item.name)
+        if (undefined == idName) {
+            idName = new IdName(idNameList.length, name)
+            idNameList.push(idName)
         }
-        return obj.id
+        return idName.id
     }
 
-    function convIdToName(id: number) {
-        if (id == STATE_INITIAL) {
-            return CHAR_ASTERISK
+    function convIdToName(id: number, uml: boolean = false) {
+        if (STATE_INITIAL_FINAL == id) {
+            return uml ? "[" + CHAR_ASTERISK + "]" : CHAR_ASTERISK
         }
-        if (id == STATE_FINAL) {
-            return CHAR_ASTERISK
-        }
-        let obj = idNameList.find((item) => item.id == id)
-        if (obj) {
-            return obj.name
+        let idName = idNameList.find((item) => item.id == id)
+        if (uml) {
+            return undefined == idName ? "UNDEFINED" : idName.name
         } else {
-            return undefined
+            return undefined == idName ? "[" + id + "]" : idName.name
         }
     }
 
@@ -529,17 +635,19 @@ namespace mstate {
         return stateMachineList[idx]
     }
 
-    function createStateMachineUml(target: StateMachine, defaultState: string, cb: (line: string) => void) {
+    function buildUml(target: StateMachine, defaultState: string, cb: (line: string) => void) {
         let sp: string
         const machineName = target.machineName
-        
+
         sp = "" // space(0)
 
         cb(sp + "@startuml")
+        cb(sp + "")
         cb(sp + "' PlantUML Web server:")
         cb(sp + "' http://www.plantuml.com/plantuml/")
+        cb(sp + "")
         // top state - machine name
-        cb(sp + "state " + machineName + " {")
+        cb(sp + "state __" + machineName + "__ {")
 
         sp = "  " // space(2)
 
@@ -548,29 +656,32 @@ namespace mstate {
         cb(sp + "' description ")
         cb(sp + "'=============")
         for (const item of target._stateDescriptions) {
-            cb(sp + "state " + convName(item.state) + " : " + item.description)
+            cb(sp + "state " + convIdToName(item.state, true) + " : " + item.description)
         }
+
         cb(sp + "")
         cb(sp + "'============")
         cb(sp + "' transition ")
         cb(sp + "'============")
-        cb(sp+ "[*] --> " + defaultState + " : (start)")
+        cb(sp + convIdToName(STATE_INITIAL_FINAL, true) + " --> " + convIdToName(getIdOrNew(defaultState), true) + " : (start)")
         for (const item of target._declareTransitions) {
             let triggerPart = ""
             if (TRIGGER_NONE != item.trigger) {
-                triggerPart = " : " + convName(item.trigger)
+                triggerPart = " : " + convIdToName(item.trigger, true)
             }
-            cb(sp + convName(item.from) + " --> " + convName(item.to) + triggerPart)
+            cb(sp + convIdToName(item.from, true) + " --> " + convIdToName(item.to, true) + triggerPart)
         }
-        // cb(sp + "")
-        // cb(sp + "'=========")
-        // cb(sp + "' declare ")
-        // cb(sp + "'=========")
+        for (const item of target._declareTransitionSelectables) {
+            const fromName = convIdToName(item.from, true)
+            const triggerName = convIdToName(item.trigger, true)
+            for (const toState of item.toList) {
+                const toName = convIdToName(toState, true)
+                cb(sp + fromName + " --> " + toName + " : " + triggerName + " [to " + toName + "]")
+            }
+        }
 
-        cb(sp + "")
-        
         sp = "" // space(0)
-        
+
         cb(sp + "}") // top state - machine name
         cb(sp + "@enduml")
     }
@@ -606,7 +717,7 @@ namespace mstate {
     export function defineStateDescription(state: string, descriptions: string[], body: (STATE: string) => void) {
         const stateId = getIdOrNew(state)
         for (const s of descriptions) {
-            defaultStateMachine.addStateDescription(stateId, s)    
+            defaultStateMachine.addStateDescription(stateId, s)
         }
         body(state)
     }
@@ -621,8 +732,7 @@ namespace mstate {
     //% weight=140
     //% group="Action"
     export function convName(id: number): string {
-        const name = convIdToName(id)
-        return name == undefined ? "[" + id + "]" : name
+        return convIdToName(id)
     }
 
     /**
@@ -685,8 +795,8 @@ namespace mstate {
 
     /**
      * declare transition.
-     * @param from state from
-     * @param to state to
+     * @param from state, transition from
+     * @param to state, transition to
      * @param trigger trigger
      */
     //% block="trasition to $to when $trigger : $from"
@@ -709,39 +819,48 @@ namespace mstate {
 
     /**
      * declare selectable transition.
-     * @param from state from
-     * @param toList array of state to
+     * @param from state, transition from
+     * @param toOptions options of state, transition to
      * @param trigger trigger
      * @param body code to run
      */
-    //% block="trasition to $toList when $trigger : $from"
+    //% block="trasition to $toOptions when $trigger : $from"
     //% from.defl="State1"
     //% trigger.defl="Trigger1"
     //% handlerStatement
+    //% advanced=true
     //% weight=90
     //% group="Transition"
-    export function declareTransitionSelectable(from: string, toList: string[], trigger: string, body: () => void) {
+    export function declareTransitionSelectable(from: string, toOptions: string[], trigger: string, body: () => void) {
         // trigger: "*" --> ""(completion)
         if (CHAR_ASTERISK == trigger) {
             trigger = ""
         }
-        // defaultStateMachine.declareTransition(
-        //     getIdOrNew(from),       // "*": INITIAL
-        //     getIdOrNew(to),         // "*": FINAL
-        //     getIdOrNew(trigger)     // trigger: "*" --> ""(completion)
-        // )
+        defaultStateMachine.declareTransitionSelectable(
+            getIdOrNew(from),                   // "*": INITIAL
+            ((stateList) => {
+                const result: number[] = []
+                for (const state of stateList) {
+                    result.push(getIdOrNew(state))  // "*": FINAL
+                }
+                return result
+            })(toOptions),
+            getIdOrNew(trigger),                // trigger: "*" --> ""(completion)
+            body
+        )
     }
 
     /**
-     * 
+     * Select state transition to in declareTransitionSelectable body
      * @param state state to
      */
     //% block="select to: $state"
     //% state.defl="State1"
+    //% advanced=true
     //% weight=80
     //% group="Transition"
     export function selectTo(state: string) {
-
+        defaultStateMachine.selectTo(getIdOrNew(state))
     }
 
     /**
@@ -769,7 +888,7 @@ namespace mstate {
     }
 
     /**
-     * create UML, plantUML
+     * export UML, PlantUML
      * PlantUML Web server: http://www.plantuml.com/plantuml/
      * @param state default state
      * @param enabled
@@ -784,13 +903,13 @@ namespace mstate {
     //% advanced=true
     //% weight=40
     //% group="Command"
-    export function createUml(state: string, enabled: boolean, body: (line: string) => void) {
+    export function exportUml(state: string, enabled: boolean, body: (line: string) => void) {
         if (enabled) {
-            createStateMachineUml(defaultStateMachine, state, body)
+            buildUml(defaultStateMachine, state, body)
         }
         // if (enabled) {
-        //     body("' server: http://www.plantuml.com/plantuml/")
         //     body("@startuml")
+        //     body("' server: http://www.plantuml.com/plantuml/")
         //     body("state default {")
         //     body("  ")
         //     body("  '=============")
@@ -809,14 +928,6 @@ namespace mstate {
         //     body("  A --> C: Trigger3")
         //     body("  B --> C")
         //     body("  C --> [*] ")
-        //     body("  ")
-        //     body("  '=========")
-        //     body("  ' declare ")
-        //     body("  '=========")
-        //     body("  state State : (1/0/0):3")
-        //     body("  state A : (0/1/0):2")
-        //     body("  state B : (0/n/1):1")
-        //     body("  state C : (n/0/n):1")
         //     body("  ")
         //     body("}")
         //     body("@enduml")
