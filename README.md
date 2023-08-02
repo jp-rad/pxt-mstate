@@ -34,6 +34,38 @@ This image may take a few minutes to refresh.
 -->
 ![A rendered view of the blocks](https://github.com/jp-rad/pxt-mstate/raw/master/.github/statics/blocks.png)
 
+
+**Example**
+
+```javascript
+let blink = 0
+function blinkLED () {
+    led.setBrightness(blink * 155 + 100)
+    blink += 1
+    blink = blink % 2
+}
+mstate.defineStateName("State1", function (STATE) {
+    mstate.declareEntry(STATE, function (prev) {
+        blink = 0
+        basic.showIcon(IconNames.Heart)
+    })
+    mstate.declareDo(STATE, 500, function () {
+        blinkLED()
+    })
+    mstate.declareExit(STATE, function (next) {
+        led.setBrightness(255)
+        basic.showIcon(IconNames.Happy)
+    })
+    mstate.declareTransition(STATE, "*", "Trigger1")
+})
+input.onButtonPressed(Button.A, function () {
+    mstate.start("State1")
+})
+input.onButtonPressed(Button.B, function () {
+    mstate.fire("Trigger1")
+})
+```
+
 #### Metadata (used for search, rendering)
 
 * for PXT/microbit
