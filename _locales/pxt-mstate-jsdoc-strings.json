@@ -18,6 +18,11 @@
   "mstate.declareTransitionSelectable|param|from": "state, transition from",
   "mstate.declareTransitionSelectable|param|toOptions": "options of state, transition to",
   "mstate.declareTransitionSelectable|param|trigger": "trigger",
+  "mstate.declareTransitionTimeout": "declare timeout transition.",
+  "mstate.declareTransitionTimeout|param|asArrow": "display as arrows in diagrams, UML",
+  "mstate.declareTransitionTimeout|param|from": "(States) state, transition from",
+  "mstate.declareTransitionTimeout|param|timeout": "timeout (ms)",
+  "mstate.declareTransitionTimeout|param|to": "(States) state, transition to",
   "mstate.declareTransition|param|from": "state, transition from",
   "mstate.declareTransition|param|to": "state, transition to",
   "mstate.declareTransition|param|trigger": "trigger",
@@ -33,8 +38,11 @@
   "mstate.exportUml|param|state": "default state",
   "mstate.fire": "fire trigger",
   "mstate.fire|param|trigger": "trigger",
+  "mstate.resetTimeout": "reset timeout",
+  "mstate.resetTimeout|param|timeout": "timeout (ms)",
   "mstate.selectTo": "Select state transition to in declareTransitionSelectable body",
   "mstate.selectTo|param|state": "state to",
   "mstate.start": "start state machine",
-  "mstate.start|param|state": "default state"
+  "mstate.start|param|state": "default state",
+  "mstate.timeouted": "timeouted"
 }

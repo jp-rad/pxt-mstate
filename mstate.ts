@@ -130,6 +130,51 @@ namespace mstate {
     }
 
     /**
+     * Transition timeout
+     */
+    class TransitionTimeout {
+        // declare
+        _from: number
+        _to: number
+        _timeout: number
+        _asArrow: boolean
+
+        /**
+         * constructor
+         * @param from (States) state, transition from
+         * @param to (States) state, transition to
+         * @param timeout timeout (ms)
+         * @param asArrow display as arrows in diagrams, UML
+         */
+        constructor(from: number, to: number, timeout: number, asArrow: boolean) {
+            this._from = from
+            this._to = to
+            this._timeout = timeout
+            this._asArrow = asArrow
+        }
+
+        /**
+         * (States) state, transition from
+         */
+        get from() { return this._from }
+
+        /**
+         * (States) state, transition to
+         */
+        get to() { return this._to }
+
+        /**
+         *  timeout (ms)
+         */
+        get timeout() { return this._timeout }
+
+        /**
+         * display as arrows in diagrams, UML
+         */
+        get asArrow() { return this._asArrow }
+    }
+
+    /**
      * Transition
      */
     class Transition {
@@ -260,19 +305,24 @@ namespace mstate {
         _declareExitActions: ExitAction[]
         _declareTransitions: Transition[]
         _declareTransitionSelectables: TransitionSelectable[]
+        _declareTransitionTImeouts: TransitionTimeout[]         // Less than one per state, the one with the minimum timeout.
 
         // current
         _state: number
         _entryActions: EntryAction[]
         _doActions: DoAction[]
         _exitActions: ExitAction[]
-        _transitions: Transition[]                              // Priority - 1: High
-        _transitionSelectables: TransitionSelectable[]          // Priority - 2: Middle (High)
-        _completionTransition: Transition                       // Priority - 3: Middle (Low)
-        _completionTransitionSelectable: TransitionSelectable   // Priority - 4: Low
+        _trasitionTimeout: TransitionTimeout                    // Priority - 1: Highest (timeouted)
+        _transitions: Transition[]                              // Priority - 2: High
+        _transitionSelectables: TransitionSelectable[]          // Priority - 3: Middle (High)
+        _completionTransition: Transition                       // Priority - 4: Middle (Low)
+        _completionTransitionSelectable: TransitionSelectable   // Priority - 5: Low
 
         // proc
         _procNext: ProcStatus
+
+        // timeout transition
+        _timeoutMillis: number
 
         // (Triggers[]) triggers
         _triggerQueue: number[]
@@ -307,6 +357,7 @@ namespace mstate {
             this._declareEntryActions = []
             this._declareDoActions = []
             this._declareExitActions = []
+            this._declareTransitionTImeouts = []
             this._declareTransitions = []
             this._declareTransitionSelectables = []
 
@@ -315,6 +366,7 @@ namespace mstate {
             this._entryActions = []
             this._doActions = []
             this._exitActions = []
+            this._trasitionTimeout = undefined
             this._transitions = []
             this._transitionSelectables = []
             this._completionTransition = undefined
@@ -322,6 +374,9 @@ namespace mstate {
 
             // proc
             this._procNext = ProcStatus.Idle
+
+            // timeout transition
+            this._timeoutMillis = 0
 
             // (Triggers[]) triggers
             this._triggerQueue = []
@@ -342,33 +397,55 @@ namespace mstate {
         get machineName() { return this._macnineName }
 
         declareEntry(state: number, cb: (prev: number) => void) {
-            const item = new EntryAction(state, cb)
-            this._declareEntryActions.push(item)
+            if (ProcStatus.Idle == this._procNext) {
+                const item = new EntryAction(state, cb)
+                this._declareEntryActions.push(item)
+            }
         }
 
         declareDo(state: number, ms: number, cb: () => void) {
-            const item = new DoAction(state, ms, cb)
-            this._declareDoActions.push(item)
+            if (ProcStatus.Idle == this._procNext) {
+                const item = new DoAction(state, ms, cb)
+                this._declareDoActions.push(item)
+            }
         }
 
         declareExit(state: number, cb: (next: number) => void) {
-            const item = new ExitAction(state, cb)
-            this._declareExitActions.push(item)
+            if (ProcStatus.Idle == this._procNext) {
+                const item = new ExitAction(state, cb)
+                this._declareExitActions.push(item)
+            }
+        }
+
+        declareTransitionTimeout(from: number, to: number, timeout: number, asArrow: boolean) {
+            if (ProcStatus.Idle == this._procNext) {
+                const found = this._declareTransitionTImeouts.find((item) => from == item.from)
+                if (undefined == found) {
+                    const item = new TransitionTimeout(from, to, timeout, asArrow)
+                    this._declareTransitionTImeouts.push(item)
+                }
+            }
         }
 
         declareTransition(from: number, to: number, trigger: number) {
-            const item = new Transition(from, to, trigger)
-            this._declareTransitions.push(item)
+            if (ProcStatus.Idle == this._procNext) {
+                const item = new Transition(from, to, trigger)
+                this._declareTransitions.push(item)
+            }
         }
 
         declareTransitionSelectable(from: number, toList: number[], trigger: number, cb: () => void) {
-            const item = new TransitionSelectable(from, toList, trigger, cb)
-            this._declareTransitionSelectables.push(item)
+            if (ProcStatus.Idle == this._procNext) {
+                const item = new TransitionSelectable(from, toList, trigger, cb)
+                this._declareTransitionSelectables.push(item)
+            }
         }
 
         addStateDescription(state: number, description: string) {
-            const item = new StateDescription(state, description)
-            this._stateDescriptions.push(item)
+            if (ProcStatus.Idle == this._procNext) {
+                const item = new StateDescription(state, description)
+                this._stateDescriptions.push(item)
+            }
         }
 
         _procStart() {
@@ -390,6 +467,13 @@ namespace mstate {
                 }
             })
             this._exitActions = this._declareExitActions.filter((item) => next == item.state)
+            this._trasitionTimeout = this._declareTransitionTImeouts.find((item) => next == item.from)
+            // reset timeout
+            if (this._trasitionTimeout) {
+                this.resetTimeout(this._trasitionTimeout.timeout)
+            } else {
+                this.resetTimeout(-1)
+            }
             this._transitions = this._declareTransitions.filter((item) => next == item.from)
             this._transitionSelectables = this._declareTransitionSelectables.filter((item) => next == item.from)
             this._completionTransition = this._transitions.find((item) => TRIGGER_NONE == item.trigger)
@@ -417,6 +501,10 @@ namespace mstate {
         }
 
         _getTransition() {
+            // Timeout Transition
+            if (this._trasitionTimeout && this.timeouted()) {
+                return this._trasitionTimeout
+            }
             // triggers - Transition and/or Transition (selectable)
             while (0 < this._triggerQueue.length) {
                 const trigger = this._triggerQueue.shift()
@@ -453,6 +541,11 @@ namespace mstate {
                 return false
             }
             // transition
+            if (transition instanceof TransitionTimeout) {
+                this._transitFrom = transition.from
+                this._transitTo = transition.to
+                return true
+            }
             if (transition instanceof Transition) {
                 this._transitFrom = transition.from
                 this._transitTo = transition.to
@@ -568,14 +661,31 @@ namespace mstate {
         }
 
         fire(trigger: number) {
-            // queuing
-            this._triggerQueue.push(trigger)
-            // update event
-            this._raiseUpdateEvent(true)
+            if ((ProcStatus.Idle != this._procNext) && (ProcStatus.Panic != this._procNext)) {
+                // queuing
+                this._triggerQueue.push(trigger)
+                // update event
+                this._raiseUpdateEvent(true)
+            }
         }
 
         selectTo(state: number) {
             this._selectedTo = state
+        }
+
+        resetTimeout(timeout: number) {
+            if (0 > timeout) {
+                this._timeoutMillis = -1
+            } else {
+                this._timeoutMillis = control.millis() + timeout
+            }
+        }
+
+        timeouted() {
+            if (0 > this._timeoutMillis) {
+                return false
+            }
+            return control.millis() >= this._timeoutMillis
         }
     }
 
@@ -652,6 +762,16 @@ namespace mstate {
         sp = "  " // space(2)
 
         cb(sp + "")
+        cb(sp + "'=======================")
+        cb(sp + "' description (timeout)")
+        cb(sp + "'=======================")
+        for (const item of target._declareTransitionTImeouts) {
+            if (!item.asArrow) {
+                cb(sp + "state " + convIdToName(item.from, true) + " : [>" + item.timeout + "ms]/ to: " + convIdToName(item.to, true))
+            }
+        }
+
+        cb(sp + "")
         cb(sp + "'=============")
         cb(sp + "' description ")
         cb(sp + "'=============")
@@ -679,6 +799,11 @@ namespace mstate {
                 cb(sp + fromName + " --> " + toName + " : " + triggerName + " [to " + toName + "]")
             }
         }
+        for (const item of target._declareTransitionTImeouts) {
+            if (item.asArrow) {
+                cb(sp + convIdToName(item.from, true) + " --> " + convIdToName(item.to, true) + " : [>" + item.timeout + "ms]")
+            }
+        }
 
         sp = "" // space(0)
 
@@ -696,7 +821,7 @@ namespace mstate {
     //% block="define $STATE to $state"
     //% state.defl="State1"
     //% draggableParameters="reporter"
-    //% weight=155
+    //% weight=220
     //% group="Design"
     export function defineStateName(state: string, body: (STATE: string) => void) {
         body(state)
@@ -712,7 +837,7 @@ namespace mstate {
     //% state.defl="State1"
     //% draggableParameters="reporter"
     //% advanced=true
-    //% weight=150
+    //% weight=210
     //% group="Design"
     export function defineStateDescription(state: string, descriptions: string[], body: (STATE: string) => void) {
         const stateId = getIdOrNew(state)
@@ -729,7 +854,7 @@ namespace mstate {
      */
     //% block="name of $id"
     //% advanced=true
-    //% weight=140
+    //% weight=200
     //% group="Action"
     export function convName(id: number): string {
         return convIdToName(id)
@@ -745,7 +870,7 @@ namespace mstate {
     //% state.defl="State1"
     //% draggableParameters="reporter"
     //% handlerStatement
-    //% weight=130
+    //% weight=190
     //% group="Action"
     export function declareEntry(state: string, body: (prev: number) => void) {
         defaultStateMachine.declareEntry(
@@ -764,7 +889,7 @@ namespace mstate {
     //% state.defl="State1"
     //% ms.shadow="timePicker"
     //% handlerStatement
-    //% weight=120
+    //% weight=180
     //% group="Action"
     export function declareDo(state: string, ms: number, body: () => void) {
         defaultStateMachine.declareDo(
@@ -784,7 +909,7 @@ namespace mstate {
     //% state.defl="State1"
     //% draggableParameters="reporter"
     //% handlerStatement
-    //% weight=110
+    //% weight=170
     //% group="Action"
     export function declareExit(state: string, body: (next: number) => void) {
         defaultStateMachine.declareExit(
@@ -803,7 +928,7 @@ namespace mstate {
     //% from.defl="State1"
     //% to.defl="State2"
     //% trigger.defl="Trigger1"
-    //% weight=100
+    //% weight=160
     //% group="Transition"
     export function declareTransition(from: string, to: string, trigger: string) {
         // trigger: "*" --> ""(completion)
@@ -829,7 +954,7 @@ namespace mstate {
     //% trigger.defl="Trigger1"
     //% handlerStatement
     //% advanced=true
-    //% weight=90
+    //% weight=150
     //% group="Transition"
     export function declareTransitionSelectable(from: string, toOptions: string[], trigger: string, body: () => void) {
         // trigger: "*" --> ""(completion)
@@ -851,13 +976,64 @@ namespace mstate {
     }
 
     /**
+     * declare timeout transition.
+     * @param from (States) state, transition from
+     * @param to (States) state, transition to
+     * @param timeout timeout (ms)
+     * @param asArrow display as arrows in diagrams, UML
+     */
+    //% block="trasition to $to when timeout $timeout ms : $from (Arrow:$asArrow)"
+    //% from.defl="State1"
+    //% to.defl="State2"
+    //% timeout.shadow="timePicker"
+    //% timeout.defl=500
+    //% asArrow.shadow="toggleOnOff"
+    //% asArrow.defl=true
+    //% inlineInputMode=inline
+    //% weight=140
+    //% group="Transition"
+    export function declareTransitionTimeout(from: string, to: string, timeout: number, asArrow: boolean) {
+        defaultStateMachine.declareTransitionTimeout(
+            getIdOrNew(from),       // "*": INITIAL
+            getIdOrNew(to),         // "*": FINAL
+            timeout,
+            asArrow
+        )
+    }
+
+    /**
+     * reset timeout
+     * @param timeout timeout (ms)
+     */
+    //% block="Timeout: $timeout (ms)"
+    //% timeout.shadow="timePicker"
+    //% timeout.defl=500
+    //% advanced=true
+    //% weight=130
+    //% group="Transition"
+    export function resetTimeout(timeout: number) {
+        defaultStateMachine.resetTimeout(timeout)
+    }
+    
+    /**
+     * timeouted
+     */
+    //% block="Timeouted"
+    //% advanced=true
+    //% weight=120
+    //% group="Transition"
+    export function timeouted() {
+        return defaultStateMachine.timeouted()
+    }
+    
+    /**
      * Select state transition to in declareTransitionSelectable body
      * @param state state to
      */
     //% block="select to: $state"
     //% state.defl="State1"
     //% advanced=true
-    //% weight=80
+    //% weight=110
     //% group="Transition"
     export function selectTo(state: string) {
         defaultStateMachine.selectTo(getIdOrNew(state))
@@ -869,7 +1045,7 @@ namespace mstate {
      */
     //% block="fire $trigger"
     //% trigger.defl="Trigger1"
-    //% weight=70
+    //% weight=100
     //% group="Command"
     export function fire(trigger: string) {
         defaultStateMachine.fire(getIdOrNew(trigger))
@@ -881,7 +1057,7 @@ namespace mstate {
      */
     //% block="start $state"
     //% state.defl="State1"
-    //% weight=60
+    //% weight=90
     //% group="Command"
     export function start(state: string) {
         defaultStateMachine.start(getIdOrNew(state))
@@ -901,7 +1077,7 @@ namespace mstate {
     //% draggableParameters="reporter"
     //% handlerStatement
     //% advanced=true
-    //% weight=40
+    //% weight=80
     //% group="Command"
     export function exportUml(state: string, enabled: boolean, body: (line: string) => void) {
         if (enabled) {
