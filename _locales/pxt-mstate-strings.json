@@ -13,6 +13,7 @@
   "mstate.fire|block": "fire $trigger",
   "mstate.getArgsOfTrigger|block": "args of tringger",
   "mstate.resetTimeout|block": "timeout: $timeout (ms)",
+  "mstate.selectToAt|block": "select to: at $index",
   "mstate.selectTo|block": "select to: $state",
   "mstate.start|block": "start $state",
   "mstate.timeouted|block": "timeouted",

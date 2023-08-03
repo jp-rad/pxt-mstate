@@ -45,6 +45,8 @@
   "mstate.resetTimeout": "reset timeout",
   "mstate.resetTimeout|param|timeout": "timeout (ms)",
   "mstate.selectTo": "Select state transition to in declareTransitionSelectable body",
+  "mstate.selectToAt": "Select state transition to in declareTransitionSelectable body",
+  "mstate.selectToAt|param|index": "states index",
   "mstate.selectTo|param|state": "state to",
   "mstate.start": "start state machine",
   "mstate.start|param|state": "default state",
