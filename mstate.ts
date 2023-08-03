@@ -258,6 +258,35 @@ namespace mstate {
         }
     }
 
+    /**
+     * Trigger and user's args
+     */
+    class TriggerArgs {
+        // trigger and args
+        _trigger: number
+        _args: number[]
+
+        /**
+         * constructor
+         * @param trigger trigger
+         * @param args args for user
+         */
+        constructor(trigger: number, args: number[]) {
+            this._trigger = trigger
+            this._args = args
+        }
+
+        /**
+         * trigger
+         */
+        get trigger() { return this._trigger }
+
+        /**
+         * args for user
+         */
+        get args() { return this._args }
+    }
+
     class StateDescription {
         _state: number
         _description: string
@@ -325,11 +354,12 @@ namespace mstate {
         _timeoutMillis: number
 
         // (Triggers[]) triggers
-        _triggerQueue: number[]
+        _triggerQueue: TriggerArgs[]
 
         // current transition
         _transitFrom: number
         _transitTo: number
+        _argsOfTrigger: number[]
 
         // selectable taransition
         _selectedTo: number | undefined // number: selected, undefined: unselected
@@ -384,6 +414,7 @@ namespace mstate {
             // current transition
             this._transitFrom = STATE_INITIAL_FINAL
             this._transitTo = STATE_INITIAL_FINAL
+            this._argsOfTrigger = undefined
 
             // selectable taransition
             this._selectedTo = undefined
@@ -501,6 +532,7 @@ namespace mstate {
         }
 
         _getTransition() {
+            this._argsOfTrigger = undefined
             // Timeout Transition
             if (this._trasitionTimeout && this.timeouted()) {
                 return this._trasitionTimeout
@@ -510,15 +542,17 @@ namespace mstate {
                 const trigger = this._triggerQueue.shift()
                 // Transition
                 if (0 < this._transitions.length) {
-                    const transition = this._transitions.find((item) => trigger == item.trigger)
+                    const transition = this._transitions.find((item) => trigger.trigger == item.trigger)
                     if (transition) {
+                        this._argsOfTrigger = trigger.args
                         return transition
                     }
                 }
                 // Transition (selectable)
                 if (0 < this._transitionSelectables.length) {
-                    const transition = this._transitionSelectables.find((item) => trigger == item.trigger)
+                    const transition = this._transitionSelectables.find((item) => trigger.trigger == item.trigger)
                     if (transition) {
+                        this._argsOfTrigger = trigger.args
                         return transition
                     }
                 }
@@ -660,13 +694,18 @@ namespace mstate {
             }
         }
 
-        fire(trigger: number) {
+        fire(trigger: number, args: number[]) {
             if ((ProcStatus.Idle != this._procNext) && (ProcStatus.Panic != this._procNext)) {
                 // queuing
-                this._triggerQueue.push(trigger)
+                const triggerArgs = new TriggerArgs(trigger, args)
+                this._triggerQueue.push(triggerArgs)
                 // update event
                 this._raiseUpdateEvent(true)
             }
+        }
+
+        getArgsOfTrigger() {
+            return this._argsOfTrigger
         }
 
         selectTo(state: number) {
@@ -1005,7 +1044,7 @@ namespace mstate {
      * reset timeout
      * @param timeout timeout (ms)
      */
-    //% block="Timeout: $timeout (ms)"
+    //% block="timeout: $timeout (ms)"
     //% timeout.shadow="timePicker"
     //% timeout.defl=500
     //% advanced=true
@@ -1014,18 +1053,29 @@ namespace mstate {
     export function resetTimeout(timeout: number) {
         defaultStateMachine.resetTimeout(timeout)
     }
-    
+
     /**
      * timeouted
      */
-    //% block="Timeouted"
+    //% block="timeouted"
     //% advanced=true
-    //% weight=120
+    //% weight=125
     //% group="Transition"
     export function timeouted() {
         return defaultStateMachine.timeouted()
     }
-    
+
+    /**
+     * get args of trigger
+     */
+    //% block="args of tringger"
+    //% advanced=true
+    //% weight=120
+    //% group="Transition"
+    export function getArgsOfTrigger() {
+        return defaultStateMachine.getArgsOfTrigger()
+    }
+
     /**
      * Select state transition to in declareTransitionSelectable body
      * @param state state to
@@ -1045,10 +1095,24 @@ namespace mstate {
      */
     //% block="fire $trigger"
     //% trigger.defl="Trigger1"
-    //% weight=100
+    //% weight=105
     //% group="Command"
     export function fire(trigger: string) {
-        defaultStateMachine.fire(getIdOrNew(trigger))
+        defaultStateMachine.fire(getIdOrNew(trigger), undefined)
+    }
+
+    /**
+     * fire trigger
+     * @param trigger trigger
+     * @param args args
+     */
+    //% block="fire $trigger args: $args"
+    //% trigger.defl="Trigger1"
+    //% advanced=true
+    //% weight=100
+    //% group="Command"
+    export function fireWithArgs(trigger: string, args: number[]) {
+        defaultStateMachine.fire(getIdOrNew(trigger), args)
     }
 
     /**
