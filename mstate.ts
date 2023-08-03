@@ -8,6 +8,7 @@ namespace mstate {
     const CHAR_ASTERISK = "*"       // asterisk charactor "*"
     const STATE_INITIAL_FINAL = -1  // "*"(INITIAL or FINAL)
     const TRIGGER_NONE = 0          // ""(completion)
+    const NUMERIC_NAN = -1          // missing value, number
 
     const MICROBIT_CUSTOM_ID_BASE = 32768
     const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 100
@@ -362,7 +363,8 @@ namespace mstate {
         _argsOfTrigger: number[]
 
         // selectable taransition
-        _selectedTo: number | undefined // number: selected, undefined: unselected
+        _selectedToAt: number   // >=0: selected, NUMERIC_NAN: unselected
+        _selectedTo: number     // TODO: deprecated
 
         // design
         _stateDescriptions: StateDescription[]
@@ -406,7 +408,7 @@ namespace mstate {
             this._procNext = ProcStatus.Idle
 
             // timeout transition
-            this._timeoutMillis = 0
+            this._timeoutMillis = NUMERIC_NAN
 
             // (Triggers[]) triggers
             this._triggerQueue = []
@@ -414,10 +416,11 @@ namespace mstate {
             // current transition
             this._transitFrom = STATE_INITIAL_FINAL
             this._transitTo = STATE_INITIAL_FINAL
-            this._argsOfTrigger = undefined
+            this._argsOfTrigger = []
 
             // selectable taransition
-            this._selectedTo = undefined
+            this._selectedToAt = NUMERIC_NAN
+            this._selectedTo = NUMERIC_NAN
 
             // design
             this._stateDescriptions = []
@@ -503,7 +506,7 @@ namespace mstate {
             if (this._trasitionTimeout) {
                 this.resetTimeout(this._trasitionTimeout.timeout)
             } else {
-                this.resetTimeout(-1)
+                this.resetTimeout(NUMERIC_NAN)
             }
             this._transitions = this._declareTransitions.filter((item) => next == item.from)
             this._transitionSelectables = this._declareTransitionSelectables.filter((item) => next == item.from)
@@ -531,71 +534,71 @@ namespace mstate {
             }
         }
 
-        _getTransition() {
-            this._argsOfTrigger = undefined
+        _doCallbackSelectable(transition: TransitionSelectable) {
+            if (transition) {
+                this._selectedToAt = NUMERIC_NAN    // reset
+                this._selectedTo = NUMERIC_NAN      // reset
+                transition.cb()                     // callback
+                if (0 <= this._selectedToAt && transition.toList.length > this._selectedToAt) {
+                    // selected
+                    this._transitFrom = transition.from
+                    this._transitTo = transition.toList[this._selectedToAt]
+                    return true
+                }
+                if (0 <= this._selectedTo) {
+                    const selectedTo = transition.toList.find((v) => v == this._selectedTo)
+                    if (selectedTo) {
+                        // selected
+                        this._transitFrom = transition.from
+                        this._transitTo = selectedTo
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+
+        _procTransit(): boolean {
             // Timeout Transition
+            this._argsOfTrigger = undefined
             if (this._trasitionTimeout && this.timeouted()) {
-                return this._trasitionTimeout
+                const transition = this._trasitionTimeout
+                this._transitFrom = transition.from
+                this._transitTo = transition.to
+                return true
             }
             // triggers - Transition and/or Transition (selectable)
             while (0 < this._triggerQueue.length) {
                 const trigger = this._triggerQueue.shift()
+                this._argsOfTrigger = trigger.args
                 // Transition
                 if (0 < this._transitions.length) {
                     const transition = this._transitions.find((item) => trigger.trigger == item.trigger)
                     if (transition) {
-                        this._argsOfTrigger = trigger.args
-                        return transition
+                        this._transitFrom = transition.from
+                        this._transitTo = transition.to
+                        return true
                     }
                 }
                 // Transition (selectable)
                 if (0 < this._transitionSelectables.length) {
                     const transition = this._transitionSelectables.find((item) => trigger.trigger == item.trigger)
-                    if (transition) {
-                        this._argsOfTrigger = trigger.args
-                        return transition
+                    if (this._doCallbackSelectable(transition)) {
+                        return true
                     }
                 }
             }
             // Completion Transition
+            this._argsOfTrigger = undefined
             if (this._completionTransition) {
-                return this._completionTransition
+                const transition = this._completionTransition
+                this._transitFrom = transition.from
+                this._transitTo = transition.to
+                return true
             }
             // Completion Transition (selectable)
-            if (this._completionTransitionSelectable) {
-                return this._completionTransitionSelectable
-            }
-            // No transitions
-            return undefined
-        }
-
-        _procTransit(): boolean {
-            const transition = this._getTransition()
-            if (undefined == transition) {
-                return false
-            }
-            // transition
-            if (transition instanceof TransitionTimeout) {
-                this._transitFrom = transition.from
-                this._transitTo = transition.to
-                return true
-            }
-            if (transition instanceof Transition) {
-                this._transitFrom = transition.from
-                this._transitTo = transition.to
-                return true
-            }
-            if (transition instanceof TransitionSelectable) {
-                this._selectedTo = undefined    // reset
-                transition.cb()                 // callback
-                const selectedTo = transition.toList.find((v) => v == this._selectedTo)
-                if (undefined == selectedTo) {
-                    // unselected or out of options
-                    return false
-                }
-                // selected
-                this._transitFrom = transition.from
-                this._transitTo = selectedTo
+            this._argsOfTrigger = undefined
+            if (this._doCallbackSelectable(this._completionTransitionSelectable)) {
                 return true
             }
             return false
@@ -705,23 +708,32 @@ namespace mstate {
         }
 
         getArgsOfTrigger() {
-            return this._argsOfTrigger
+            if (this._argsOfTrigger) {
+                return this._argsOfTrigger
+            }
+            return []
+        }
+
+        selectToAt(index: number) {
+            this._selectedToAt = index
+            this._selectedTo = NUMERIC_NAN
         }
 
         selectTo(state: number) {
+            this._selectedToAt = NUMERIC_NAN
             this._selectedTo = state
         }
 
         resetTimeout(timeout: number) {
             if (0 > timeout) {
-                this._timeoutMillis = -1
+                this._timeoutMillis = NUMERIC_NAN
             } else {
                 this._timeoutMillis = control.millis() + timeout
             }
         }
 
         timeouted() {
-            if (0 > this._timeoutMillis) {
+            if (NUMERIC_NAN == this._timeoutMillis) {
                 return false
             }
             return control.millis() >= this._timeoutMillis
@@ -1078,6 +1090,19 @@ namespace mstate {
 
     /**
      * Select state transition to in declareTransitionSelectable body
+     * @param index states index
+     */
+    //% block="select to: at $index"
+    //% index.defl=0
+    //% advanced=true
+    //% weight=110
+    //% group="Transition"
+    export function selectToAt(index: number) {
+        defaultStateMachine.selectToAt(index)
+    }
+
+    /**
+     * Select state transition to in declareTransitionSelectable body
      * @param state state to
      */
     //% block="select to: $state"
@@ -1085,6 +1110,7 @@ namespace mstate {
     //% advanced=true
     //% weight=110
     //% group="Transition"
+    //% deprecated=true
     export function selectTo(state: string) {
         defaultStateMachine.selectTo(getIdOrNew(state))
     }
