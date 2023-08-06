@@ -221,6 +221,7 @@ namespace mstate {
         _toList: number[]
         _trigger: number
         _cb: () => void
+        _guardList: string[]
 
         /**
          * constructor
@@ -229,11 +230,16 @@ namespace mstate {
          * @param trigger (Triggers) trigger
          * @param cb run to code for selecting state, transition to
          */
-        constructor(from: number, toList: number[], trigger: number, cb: () => void) {
+        constructor(from: number, toList: number[], trigger: number, cb: () => void, guardList: string[]) {
             this._from = from
             this._toList = toList
             this._trigger = trigger
             this._cb = cb
+            this._guardList = []
+            for (let i = 0; i < toList.length; i++) {
+                const guard = guardList[i]
+                this._guardList.push(guard)
+            }
         }
 
         /**
@@ -468,9 +474,9 @@ namespace mstate {
             }
         }
 
-        declareTransitionSelectable(from: number, toList: number[], trigger: number, cb: () => void) {
+        declareTransitionSelectable(from: number, toList: number[], trigger: number, cb: () => void, guardList: string[]) {
             if (ProcStatus.Idle == this._procNext) {
-                const item = new TransitionSelectable(from, toList, trigger, cb)
+                const item = new TransitionSelectable(from, toList, trigger, cb, guardList)
                 this._declareTransitionSelectables.push(item)
             }
         }
@@ -806,8 +812,8 @@ namespace mstate {
         sp = "" // space(0)
 
         cb(sp + "@startuml")
-        cb(sp + "")
-        cb(sp + "' PlantUML Web server:")
+        // cb(sp + "")
+        // cb(sp + "' PlantUML Web server:")
         cb(sp + "' http://www.plantuml.com/plantuml/")
         cb(sp + "")
         // top state - machine name
@@ -816,9 +822,9 @@ namespace mstate {
         sp = "  " // space(2)
 
         cb(sp + "")
-        cb(sp + "'=======================")
-        cb(sp + "' description (timeout)")
-        cb(sp + "'=======================")
+        // cb(sp + "'=======================")
+        // cb(sp + "' description (timeout)")
+        // cb(sp + "'=======================")
         for (const item of target._declareTransitionTImeouts) {
             if (!item.asArrow) {
                 cb(sp + "state " + convIdToName(item.from, true) + " : [>" + item.timeout + "ms]/ to: " + convIdToName(item.to, true))
@@ -826,17 +832,17 @@ namespace mstate {
         }
 
         cb(sp + "")
-        cb(sp + "'=============")
-        cb(sp + "' description ")
-        cb(sp + "'=============")
+        // cb(sp + "'=============")
+        // cb(sp + "' description ")
+        // cb(sp + "'=============")
         for (const item of target._stateDescriptions) {
             cb(sp + "state " + convIdToName(item.state, true) + " : " + item.description)
         }
 
         cb(sp + "")
-        cb(sp + "'============")
-        cb(sp + "' transition ")
-        cb(sp + "'============")
+        // cb(sp + "'============")
+        // cb(sp + "' transition ")
+        // cb(sp + "'============")
         cb(sp + convIdToName(STATE_INITIAL_FINAL, true) + " --> " + convIdToName(getIdOrNew(defaultState), true) + " : (start)")
         for (const item of target._declareTransitions) {
             let triggerPart = ""
@@ -848,6 +854,18 @@ namespace mstate {
         for (const item of target._declareTransitionSelectables) {
             const fromName = convIdToName(item.from, true)
             const triggerName = convIdToName(item.trigger, true)
+            for (let i = 0; i < 9; i++) {
+                const toName = convIdToName(item.toList[i], true)
+                const guard = item._guardList[i]
+                let guardPart = ""
+                if (undefined === guard) {
+                    guardPart = " [to " + toName + "]"
+                } else if (guard) {
+                    guardPart = " [" + guard + "]"
+                }
+                cb(sp + fromName + " --> " + toName + " : " + triggerName + guardPart)
+            }
+
             for (const toState of item.toList) {
                 const toName = convIdToName(toState, true)
                 cb(sp + fromName + " --> " + toName + " : " + triggerName + " [to " + toName + "]")
@@ -1015,17 +1033,28 @@ namespace mstate {
         if (CHAR_ASTERISK == trigger) {
             trigger = ""
         }
+        let toList: number[] = []
+        let guardList: string[] = []
+        for (const s of toOptions) {
+            const idx = s.indexOf(":")
+            if (0 >= idx) {
+                // state only
+                toList.push(getIdOrNew(s))      // "*": FINAL
+                guardList.push(undefined)
+            } else {
+                // <state name>:<guard>
+                const name = s.slice(0, idx)
+                const guard = s.slice(idx)
+                toList.push(getIdOrNew(name))   // "*": FINAL
+                guardList.push(guard)
+            }
+        }
         defaultStateMachine.declareTransitionSelectable(
-            getIdOrNew(from),                   // "*": INITIAL
-            ((stateList) => {
-                const result: number[] = []
-                for (const state of stateList) {
-                    result.push(getIdOrNew(state))  // "*": FINAL
-                }
-                return result
-            })(toOptions),
-            getIdOrNew(trigger),                // trigger: "*" --> ""(completion)
-            body
+            getIdOrNew(from),       // "*": INITIAL
+            toList,                 // "*": FINAL
+            getIdOrNew(trigger),    // trigger: "*" --> ""(completion)
+            body,
+            guardList
         )
     }
 
