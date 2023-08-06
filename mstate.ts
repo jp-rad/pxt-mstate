@@ -46,9 +46,9 @@ namespace mstate {
     }
 
     /**
-     * DoAction
+     * DoActivity
      */
-    class DoAction {
+    class DoActivity {
         // declare
         _state: number
         _ms: number
@@ -81,9 +81,9 @@ namespace mstate {
 
         /**
          * execute DO
+         * @param tick the number of milliseconds elapsed since power on, control.millis().
          */
-        execute() {
-            const tick = control.millis()
+        execute(tick: number) {
             if (this._forceTick || (tick > this._nextTick)) {
                 this._cb()
                 this._forceTick = false
@@ -331,7 +331,7 @@ namespace mstate {
 
         // declare
         _declareEntryActions: EntryAction[]
-        _declareDoActions: DoAction[]
+        _declareDoActivities: DoActivity[]
         _declareExitActions: ExitAction[]
         _declareTransitions: Transition[]
         _declareTransitionSelectables: TransitionSelectable[]
@@ -340,7 +340,7 @@ namespace mstate {
         // current
         _state: number
         _entryActions: EntryAction[]
-        _doActions: DoAction[]
+        _doActivities: DoActivity[]
         _exitActions: ExitAction[]
         _trasitionTimeout: TransitionTimeout                    // Priority - 1: Highest (timeouted)
         _transitions: Transition[]                              // Priority - 2: High
@@ -387,7 +387,7 @@ namespace mstate {
 
             // declare
             this._declareEntryActions = []
-            this._declareDoActions = []
+            this._declareDoActivities = []
             this._declareExitActions = []
             this._declareTransitionTImeouts = []
             this._declareTransitions = []
@@ -396,7 +396,7 @@ namespace mstate {
             // current
             this._state = STATE_INITIAL_FINAL
             this._entryActions = []
-            this._doActions = []
+            this._doActivities = []
             this._exitActions = []
             this._trasitionTimeout = undefined
             this._transitions = []
@@ -439,8 +439,8 @@ namespace mstate {
 
         declareDo(state: number, ms: number, cb: () => void) {
             if (ProcStatus.Idle == this._procNext) {
-                const item = new DoAction(state, ms, cb)
-                this._declareDoActions.push(item)
+                const item = new DoActivity(state, ms, cb)
+                this._declareDoActivities.push(item)
             }
         }
 
@@ -492,7 +492,7 @@ namespace mstate {
             // into current
             this._state = next
             this._entryActions = this._declareEntryActions.filter((item) => next == item.state)
-            this._doActions = this._declareDoActions.filter((item) => {
+            this._doActivities = this._declareDoActivities.filter((item) => {
                 if (next == item.state) {
                     item.forceTick()
                     return true
@@ -522,8 +522,9 @@ namespace mstate {
         }
 
         _procDo() {
-            for (const doProc of this._doActions) {
-                doProc.execute()
+            const tick = control.millis()
+            for (const doProc of this._doActivities) {
+                doProc.execute(tick)
             }
         }
 
