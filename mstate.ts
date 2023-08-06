@@ -342,11 +342,11 @@ namespace mstate {
         _entryActions: EntryAction[]
         _doActivities: DoActivity[]
         _exitActions: ExitAction[]
-        _trasitionTimeout: TransitionTimeout                    // Priority - 1: Highest (timeouted)
-        _transitions: Transition[]                              // Priority - 2: High
-        _transitionSelectables: TransitionSelectable[]          // Priority - 3: Middle (High)
-        _completionTransition: Transition                       // Priority - 4: Middle (Low)
-        _completionTransitionSelectable: TransitionSelectable   // Priority - 5: Low
+        _trasitionTimeout: TransitionTimeout                        // Priority - 1: Highest (timeouted)
+        _transitionSelectables: TransitionSelectable[]              // Priority - 2: High
+        _transitions: Transition[]                                  // Priority - 3: Middle (High)
+        _completionTransitionSelectables: TransitionSelectable[]    // Priority - 4: Middle (Low)
+        _completionTransition: Transition                           // Priority - 5: Low
 
         // proc
         _procNext: ProcStatus
@@ -399,10 +399,10 @@ namespace mstate {
             this._doActivities = []
             this._exitActions = []
             this._trasitionTimeout = undefined
-            this._transitions = []
             this._transitionSelectables = []
+            this._transitions = []
+            this._completionTransitionSelectables = []
             this._completionTransition = undefined
-            this._completionTransitionSelectable = undefined
 
             // proc
             this._procNext = ProcStatus.Idle
@@ -510,8 +510,8 @@ namespace mstate {
             }
             this._transitions = this._declareTransitions.filter((item) => next == item.from)
             this._transitionSelectables = this._declareTransitionSelectables.filter((item) => next == item.from)
+            this._completionTransitionSelectables = this._transitionSelectables.filter((item) => TRIGGER_NONE == item.trigger)
             this._completionTransition = this._transitions.find((item) => TRIGGER_NONE == item.trigger)
-            this._completionTransitionSelectable = this._transitionSelectables.find((item) => TRIGGER_NONE == item.trigger)
         }
 
         _procEnter() {
@@ -572,6 +572,13 @@ namespace mstate {
             while (0 < this._triggerQueue.length) {
                 const trigger = this._triggerQueue.shift()
                 this._argsOfTrigger = trigger.args
+                // Transition (selectable)
+                if (0 < this._transitionSelectables.length) {
+                    const transition = this._transitionSelectables.find((item) => trigger.trigger == item.trigger)
+                    if (this._doCallbackSelectable(transition)) {
+                        return true
+                    }
+                }
                 // Transition
                 if (0 < this._transitions.length) {
                     const transition = this._transitions.find((item) => trigger.trigger == item.trigger)
@@ -581,12 +588,12 @@ namespace mstate {
                         return true
                     }
                 }
-                // Transition (selectable)
-                if (0 < this._transitionSelectables.length) {
-                    const transition = this._transitionSelectables.find((item) => trigger.trigger == item.trigger)
-                    if (this._doCallbackSelectable(transition)) {
-                        return true
-                    }
+            }
+            // Completion Transition (selectable)
+            this._argsOfTrigger = undefined
+            for (const transition of this._completionTransitionSelectables) {
+                if (this._doCallbackSelectable(transition)) {
+                    return true
                 }
             }
             // Completion Transition
@@ -595,11 +602,6 @@ namespace mstate {
                 const transition = this._completionTransition
                 this._transitFrom = transition.from
                 this._transitTo = transition.to
-                return true
-            }
-            // Completion Transition (selectable)
-            this._argsOfTrigger = undefined
-            if (this._doCallbackSelectable(this._completionTransitionSelectable)) {
                 return true
             }
             return false
