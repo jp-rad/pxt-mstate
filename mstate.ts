@@ -16,6 +16,8 @@ namespace mstate {
 
     const DEFAULT_STATE_MACHINE_NAME = "default"
 
+    const CHAR_GUARD = "?"  // [<guard>?]<state name>
+
     /**
      * EntryAction
      */
@@ -854,7 +856,7 @@ namespace mstate {
         for (const item of target._declareTransitionSelectables) {
             const fromName = convIdToName(item.from, true)
             const triggerName = convIdToName(item.trigger, true)
-            for (let i = 0; i < 9; i++) {
+            for (let i = 0; i < item.toList.length; i++) {
                 const toName = convIdToName(item.toList[i], true)
                 const guard = item._guardList[i]
                 let guardPart = ""
@@ -863,12 +865,11 @@ namespace mstate {
                 } else if (guard) {
                     guardPart = " [" + guard + "]"
                 }
-                cb(sp + fromName + " --> " + toName + " : " + triggerName + guardPart)
-            }
-
-            for (const toState of item.toList) {
-                const toName = convIdToName(toState, true)
-                cb(sp + fromName + " --> " + toName + " : " + triggerName + " [to " + toName + "]")
+                if (triggerName || guardPart) {
+                    cb(sp + fromName + " --> " + toName + " : " + triggerName + guardPart)
+                } else {
+                    cb(sp + fromName + " --> " + toName)   
+                }
             }
         }
         for (const item of target._declareTransitionTImeouts) {
@@ -1036,15 +1037,16 @@ namespace mstate {
         let toList: number[] = []
         let guardList: string[] = []
         for (const s of toOptions) {
-            const idx = s.indexOf(":")
-            if (0 >= idx) {
+            // [<guard>?]<state name>
+            const idx = s.indexOf(CHAR_GUARD)
+            if (0 > idx) {
                 // state only
                 toList.push(getIdOrNew(s))      // "*": FINAL
                 guardList.push(undefined)
             } else {
-                // <state name>:<guard>
-                const name = s.slice(0, idx)
-                const guard = s.slice(idx)
+                // guard and state
+                const guard = s.slice(0, idx)
+                const name = s.slice(idx+1)
                 toList.push(getIdOrNew(name))   // "*": FINAL
                 guardList.push(guard)
             }
