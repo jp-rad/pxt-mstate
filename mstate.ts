@@ -16,6 +16,8 @@ namespace mstate {
 
     const DEFAULT_STATE_MACHINE_NAME = "default"
 
+    const CHAR_GUARD = "?"  // [<guard>?]<state name>
+
     /**
      * EntryAction
      */
@@ -46,9 +48,9 @@ namespace mstate {
     }
 
     /**
-     * DoAction
+     * DoActivity
      */
-    class DoAction {
+    class DoActivity {
         // declare
         _state: number
         _ms: number
@@ -81,9 +83,9 @@ namespace mstate {
 
         /**
          * execute DO
+         * @param tick the number of milliseconds elapsed since power on, control.millis().
          */
-        execute() {
-            const tick = control.millis()
+        execute(tick: number) {
             if (this._forceTick || (tick > this._nextTick)) {
                 this._cb()
                 this._forceTick = false
@@ -221,6 +223,7 @@ namespace mstate {
         _toList: number[]
         _trigger: number
         _cb: () => void
+        _guardList: string[]
 
         /**
          * constructor
@@ -229,11 +232,16 @@ namespace mstate {
          * @param trigger (Triggers) trigger
          * @param cb run to code for selecting state, transition to
          */
-        constructor(from: number, toList: number[], trigger: number, cb: () => void) {
+        constructor(from: number, toList: number[], trigger: number, cb: () => void, guardList: string[]) {
             this._from = from
             this._toList = toList
             this._trigger = trigger
             this._cb = cb
+            this._guardList = []
+            for (let i = 0; i < toList.length; i++) {
+                const guard = guardList[i]
+                this._guardList.push(guard)
+            }
         }
 
         /**
@@ -331,7 +339,7 @@ namespace mstate {
 
         // declare
         _declareEntryActions: EntryAction[]
-        _declareDoActions: DoAction[]
+        _declareDoActivities: DoActivity[]
         _declareExitActions: ExitAction[]
         _declareTransitions: Transition[]
         _declareTransitionSelectables: TransitionSelectable[]
@@ -340,13 +348,13 @@ namespace mstate {
         // current
         _state: number
         _entryActions: EntryAction[]
-        _doActions: DoAction[]
+        _doActivities: DoActivity[]
         _exitActions: ExitAction[]
-        _trasitionTimeout: TransitionTimeout                    // Priority - 1: Highest (timeouted)
-        _transitions: Transition[]                              // Priority - 2: High
-        _transitionSelectables: TransitionSelectable[]          // Priority - 3: Middle (High)
-        _completionTransition: Transition                       // Priority - 4: Middle (Low)
-        _completionTransitionSelectable: TransitionSelectable   // Priority - 5: Low
+        _trasitionTimeout: TransitionTimeout                        // Priority - 1: Highest (timeouted)
+        _transitionSelectables: TransitionSelectable[]              // Priority - 2: High
+        _transitions: Transition[]                                  // Priority - 3: Middle (High)
+        _completionTransitionSelectables: TransitionSelectable[]    // Priority - 4: Middle (Low)
+        _completionTransition: Transition                           // Priority - 5: Low
 
         // proc
         _procNext: ProcStatus
@@ -387,7 +395,7 @@ namespace mstate {
 
             // declare
             this._declareEntryActions = []
-            this._declareDoActions = []
+            this._declareDoActivities = []
             this._declareExitActions = []
             this._declareTransitionTImeouts = []
             this._declareTransitions = []
@@ -396,13 +404,13 @@ namespace mstate {
             // current
             this._state = STATE_INITIAL_FINAL
             this._entryActions = []
-            this._doActions = []
+            this._doActivities = []
             this._exitActions = []
             this._trasitionTimeout = undefined
-            this._transitions = []
             this._transitionSelectables = []
+            this._transitions = []
+            this._completionTransitionSelectables = []
             this._completionTransition = undefined
-            this._completionTransitionSelectable = undefined
 
             // proc
             this._procNext = ProcStatus.Idle
@@ -439,8 +447,8 @@ namespace mstate {
 
         declareDo(state: number, ms: number, cb: () => void) {
             if (ProcStatus.Idle == this._procNext) {
-                const item = new DoAction(state, ms, cb)
-                this._declareDoActions.push(item)
+                const item = new DoActivity(state, ms, cb)
+                this._declareDoActivities.push(item)
             }
         }
 
@@ -468,9 +476,9 @@ namespace mstate {
             }
         }
 
-        declareTransitionSelectable(from: number, toList: number[], trigger: number, cb: () => void) {
+        declareTransitionSelectable(from: number, toList: number[], trigger: number, cb: () => void, guardList: string[]) {
             if (ProcStatus.Idle == this._procNext) {
-                const item = new TransitionSelectable(from, toList, trigger, cb)
+                const item = new TransitionSelectable(from, toList, trigger, cb, guardList)
                 this._declareTransitionSelectables.push(item)
             }
         }
@@ -492,7 +500,7 @@ namespace mstate {
             // into current
             this._state = next
             this._entryActions = this._declareEntryActions.filter((item) => next == item.state)
-            this._doActions = this._declareDoActions.filter((item) => {
+            this._doActivities = this._declareDoActivities.filter((item) => {
                 if (next == item.state) {
                     item.forceTick()
                     return true
@@ -510,8 +518,8 @@ namespace mstate {
             }
             this._transitions = this._declareTransitions.filter((item) => next == item.from)
             this._transitionSelectables = this._declareTransitionSelectables.filter((item) => next == item.from)
+            this._completionTransitionSelectables = this._transitionSelectables.filter((item) => TRIGGER_NONE == item.trigger)
             this._completionTransition = this._transitions.find((item) => TRIGGER_NONE == item.trigger)
-            this._completionTransitionSelectable = this._transitionSelectables.find((item) => TRIGGER_NONE == item.trigger)
         }
 
         _procEnter() {
@@ -522,8 +530,9 @@ namespace mstate {
         }
 
         _procDo() {
-            for (const doProc of this._doActions) {
-                doProc.execute()
+            const tick = control.millis()
+            for (const doProc of this._doActivities) {
+                doProc.execute(tick)
             }
         }
 
@@ -571,6 +580,13 @@ namespace mstate {
             while (0 < this._triggerQueue.length) {
                 const trigger = this._triggerQueue.shift()
                 this._argsOfTrigger = trigger.args
+                // Transition (selectable)
+                if (0 < this._transitionSelectables.length) {
+                    const transition = this._transitionSelectables.find((item) => trigger.trigger == item.trigger)
+                    if (this._doCallbackSelectable(transition)) {
+                        return true
+                    }
+                }
                 // Transition
                 if (0 < this._transitions.length) {
                     const transition = this._transitions.find((item) => trigger.trigger == item.trigger)
@@ -580,12 +596,12 @@ namespace mstate {
                         return true
                     }
                 }
-                // Transition (selectable)
-                if (0 < this._transitionSelectables.length) {
-                    const transition = this._transitionSelectables.find((item) => trigger.trigger == item.trigger)
-                    if (this._doCallbackSelectable(transition)) {
-                        return true
-                    }
+            }
+            // Completion Transition (selectable)
+            this._argsOfTrigger = undefined
+            for (const transition of this._completionTransitionSelectables) {
+                if (this._doCallbackSelectable(transition)) {
+                    return true
                 }
             }
             // Completion Transition
@@ -594,11 +610,6 @@ namespace mstate {
                 const transition = this._completionTransition
                 this._transitFrom = transition.from
                 this._transitTo = transition.to
-                return true
-            }
-            // Completion Transition (selectable)
-            this._argsOfTrigger = undefined
-            if (this._doCallbackSelectable(this._completionTransitionSelectable)) {
                 return true
             }
             return false
@@ -803,8 +814,8 @@ namespace mstate {
         sp = "" // space(0)
 
         cb(sp + "@startuml")
-        cb(sp + "")
-        cb(sp + "' PlantUML Web server:")
+        // cb(sp + "")
+        // cb(sp + "' PlantUML Web server:")
         cb(sp + "' http://www.plantuml.com/plantuml/")
         cb(sp + "")
         // top state - machine name
@@ -813,9 +824,9 @@ namespace mstate {
         sp = "  " // space(2)
 
         cb(sp + "")
-        cb(sp + "'=======================")
-        cb(sp + "' description (timeout)")
-        cb(sp + "'=======================")
+        // cb(sp + "'=======================")
+        // cb(sp + "' description (timeout)")
+        // cb(sp + "'=======================")
         for (const item of target._declareTransitionTImeouts) {
             if (!item.asArrow) {
                 cb(sp + "state " + convIdToName(item.from, true) + " : [>" + item.timeout + "ms]/ to: " + convIdToName(item.to, true))
@@ -823,17 +834,17 @@ namespace mstate {
         }
 
         cb(sp + "")
-        cb(sp + "'=============")
-        cb(sp + "' description ")
-        cb(sp + "'=============")
+        // cb(sp + "'=============")
+        // cb(sp + "' description ")
+        // cb(sp + "'=============")
         for (const item of target._stateDescriptions) {
             cb(sp + "state " + convIdToName(item.state, true) + " : " + item.description)
         }
 
         cb(sp + "")
-        cb(sp + "'============")
-        cb(sp + "' transition ")
-        cb(sp + "'============")
+        // cb(sp + "'============")
+        // cb(sp + "' transition ")
+        // cb(sp + "'============")
         cb(sp + convIdToName(STATE_INITIAL_FINAL, true) + " --> " + convIdToName(getIdOrNew(defaultState), true) + " : (start)")
         for (const item of target._declareTransitions) {
             let triggerPart = ""
@@ -845,9 +856,20 @@ namespace mstate {
         for (const item of target._declareTransitionSelectables) {
             const fromName = convIdToName(item.from, true)
             const triggerName = convIdToName(item.trigger, true)
-            for (const toState of item.toList) {
-                const toName = convIdToName(toState, true)
-                cb(sp + fromName + " --> " + toName + " : " + triggerName + " [to " + toName + "]")
+            for (let i = 0; i < item.toList.length; i++) {
+                const toName = convIdToName(item.toList[i], true)
+                const guard = item._guardList[i]
+                let guardPart = ""
+                if (undefined === guard) {
+                    guardPart = " [to " + toName + "]"
+                } else if (guard) {
+                    guardPart = " [" + guard + "]"
+                }
+                if (triggerName || guardPart) {
+                    cb(sp + fromName + " --> " + toName + " : " + triggerName + guardPart)
+                } else {
+                    cb(sp + fromName + " --> " + toName)   
+                }
             }
         }
         for (const item of target._declareTransitionTImeouts) {
@@ -1012,17 +1034,29 @@ namespace mstate {
         if (CHAR_ASTERISK == trigger) {
             trigger = ""
         }
+        let toList: number[] = []
+        let guardList: string[] = []
+        for (const s of toOptions) {
+            // [<guard>?]<state name>
+            const idx = s.indexOf(CHAR_GUARD)
+            if (0 > idx) {
+                // state only
+                toList.push(getIdOrNew(s))      // "*": FINAL
+                guardList.push(undefined)
+            } else {
+                // guard and state
+                const guard = s.slice(0, idx)
+                const name = s.slice(idx+1)
+                toList.push(getIdOrNew(name))   // "*": FINAL
+                guardList.push(guard)
+            }
+        }
         defaultStateMachine.declareTransitionSelectable(
-            getIdOrNew(from),                   // "*": INITIAL
-            ((stateList) => {
-                const result: number[] = []
-                for (const state of stateList) {
-                    result.push(getIdOrNew(state))  // "*": FINAL
-                }
-                return result
-            })(toOptions),
-            getIdOrNew(trigger),                // trigger: "*" --> ""(completion)
-            body
+            getIdOrNew(from),       // "*": INITIAL
+            toList,                 // "*": FINAL
+            getIdOrNew(trigger),    // trigger: "*" --> ""(completion)
+            body,
+            guardList
         )
     }
 
