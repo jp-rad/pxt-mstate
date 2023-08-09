@@ -2,6 +2,7 @@
  * tests go here; this will not be compiled when this package is used as an extension.
  */
 
+// blink
 function blinkLED() {
     if (0 == blinkNext) {
         blinkNext = 1
@@ -12,45 +13,44 @@ function blinkLED() {
     }
 }
 
+// simple transition
+function transition(machine: number, state: number, triggerName: string, stateNameTo: string) {
+    mstate.declareTransition(machine, state, triggerName, [stateNameTo], function (args) {
+        mstate.transitTo(machine, 0)
+        mode = 0
+    })
+}
+
 // State Off
 // entry/
-//  - LED off
+// - LED off
 mstate.defineState(StateMachines.M0, "Off", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
         basic.clearScreen()
     })
-    mstate.declareTransition(machine, state, "A", ["On"], function (args) {
-        mstate.transitTo(machine, 0)
-        mode = 0
-    })
+    transition(machine, state, "A", "On")
 })
 
 // Stete On
 // entry/
-//  - Initialize On/Blink
-//  - LED Heart
+// - Initialize On/Blink
+// - LED Heart
 mstate.defineState(StateMachines.M0, "On", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
         led.setBrightness(255)
         blinkNext = 0
         basic.showIcon(IconNames.Heart)
     })
-    mstate.declareTransition(machine, state, "A", ["Slow"], function (args) {
-        mstate.transitTo(machine, 0)
-    })
-    mstate.declareTransition(machine, state, "Auto", ["Slow"], function (args) {
-        mstate.transitTo(machine, 0)
-    })
-    mstate.declareTransition(machine, state, "B", ["Off"], function (args) {
-        mstate.transitTo(machine, 0)
-    })
+    transition(machine, state, "A", "Slow")
+    transition(machine, state, "B", "Off")
+    transition(machine, state, "Auto", "Slow")
 })
 
 // State Slow
 // entry/
-//  - reset blinkCount
+// - reset blinkCount
 // do/ (500ms)
-//  - LED blink
+// - LED blink
 // [Auto Mode] 6times
 mstate.defineState(StateMachines.M0, "Slow", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
@@ -64,24 +64,20 @@ mstate.defineState(StateMachines.M0, "Slow", function (machine, state) {
             blinkLED()
         }
     })
-    mstate.declareTransition(machine, state, "A", ["Fast"], function (args) {
-        mstate.transitTo(machine, 0)
-    })
     mstate.declareTransition(machine, state, "", ["Fast"], function (args) {
         if (0 > blinkCount) {
             mstate.transitTo(machine, 0)
         }
     })
-    mstate.declareTransition(machine, state, "B", ["Off"], function (args) {
-        mstate.transitTo(machine, 0)
-    })
+    transition(machine, state, "A", "Fast")
+    transition(machine, state, "B", "Off")
 })
 
 // State Fast
 // entry/
-//  - reset blinkCount
+// - reset blinkCount
 // do/ (200ms)
-//  - LED blink
+// - LED blink
 // [Auto Mode] 16times
 mstate.defineState(StateMachines.M0, "Fast", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
@@ -95,30 +91,26 @@ mstate.defineState(StateMachines.M0, "Fast", function (machine, state) {
             blinkLED()
         }
     })
-    mstate.declareTransition(machine, state, "A", ["On"], function (args) {
-        mstate.transitTo(machine, 0)
-    })
     mstate.declareTransition(machine, state, "", ["Slow"], function (args) {
         if (0 > blinkCount) {
             mstate.transitTo(machine, 0)
         }
     })
-    mstate.declareTransition(machine, state, "B", ["Off"], function (args) {
-        mstate.transitTo(machine, 0)
-    })
+    transition(machine, state, "A", "On")
+    transition(machine, state, "B", "Off")
 })
 
 input.onButtonPressed(Button.A, function () {
     mstate.fire(StateMachines.M0, "A", [])
 })
-input.onButtonPressed(Button.B, function () {
-    mstate.fire(StateMachines.M0, "B", [])
-})
 input.onButtonPressed(Button.AB, function () {
     mstate.fire(StateMachines.M0, "Auto", [])
     mode = 1
 })
-let mode = 0
+input.onButtonPressed(Button.B, function () {
+    mstate.fire(StateMachines.M0, "B", [])
+})
 let blinkCount = 0
+let mode = 0
 let blinkNext = 0
 mstate.start(StateMachines.M0, "Off")
