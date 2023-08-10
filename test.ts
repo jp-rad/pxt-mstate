@@ -18,6 +18,7 @@ function blinkLED() {
 // - LED off
 mstate.defineState(StateMachines.M0, "Off", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
+        mode = 0
         basic.clearScreen()
     })
     mstate.declareExit(machine, state, function () {
@@ -33,6 +34,7 @@ mstate.defineState(StateMachines.M0, "Off", function (machine, state) {
 // - LED Heart
 mstate.defineState(StateMachines.M0, "On", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
+        mode = 0
         led.setBrightness(255)
         blinkNext = 0
         basic.showIcon(IconNames.Heart)

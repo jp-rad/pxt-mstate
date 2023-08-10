@@ -83,6 +83,10 @@ namespace mstate {
          * Entry/Exit Action
          */
         class EntryExitAction {
+            /**
+             * state id.
+             */
+            state: number
 
             /**
              * execute Entry.
@@ -91,9 +95,11 @@ namespace mstate {
 
             /**
              * constructor
+             * @param state state id
              * @param cb code to run
              */
-            constructor(cb: () => void) {
+            constructor(state: number, cb: () => void) {
+                this.state = state
                 this.execute = cb
             }
         }
@@ -102,6 +108,10 @@ namespace mstate {
          * Do Activity
          */
         class DoActivity {
+            /**
+             * state id.
+             */
+            state: number
 
             // callback
             _cb: () => void
@@ -110,10 +120,12 @@ namespace mstate {
 
             /**
              * constructor
+             * @param state (States) state
              * @param ms interval (ms)
              * @param cb code to run
              */
-            constructor(ms: number, cb: () => void) {
+            constructor(state: number, ms: number, cb: () => void) {
+                this.state = state
                 this._cb = cb
                 this._ms = ms
                 this._nextTick = -1
@@ -143,6 +155,10 @@ namespace mstate {
          */
         class Transition {
             /**
+             * state id, transition from.
+             */
+            state: number
+            /**
              * array of state id, transition to.
              */
             toList: number[]
@@ -158,11 +174,13 @@ namespace mstate {
 
             /**
              * constructor
+             * @param state state id, transition from
              * @param toList array of state id, transition to
              * @param trigger trigger id
              * @param cb run to code, (triggerArgs: number[]) => void
              */
-            constructor(toList: number[], trigger: number, cb: (triggerArgs: number[]) => void) {
+            constructor(state: number, toList: number[], trigger: number, cb: (triggerArgs: number[]) => void) {
+                this.state = state
                 this.toList = toList
                 this.trigger = trigger
                 this.execute = cb
@@ -342,23 +360,31 @@ namespace mstate {
             }
 
             declareEntry(state: number, cb: () => void) {
-                const objState = this._getStateOrNew(state)
-                objState.entryActions.push(new EntryExitAction(cb))
+                if (ProcState.Idle == this._procNext) {
+                    const objState = this._getStateOrNew(state)
+                    objState.entryActions.push(new EntryExitAction(state, cb))
+                }
             }
 
             declareDo(state: number, ms: number, cb: () => void) {
-                const objState = this._getStateOrNew(state)
-                objState.doActivities.push(new DoActivity(ms, cb))
+                if (ProcState.Idle == this._procNext) {
+                    const objState = this._getStateOrNew(state)
+                    objState.doActivities.push(new DoActivity(state, ms, cb))
+                }
             }
 
             declareExit(state: number, cb: () => void) {
-                const objState = this._getStateOrNew(state)
-                objState.exitActions.push(new EntryExitAction(cb))
+                if (ProcState.Idle == this._procNext) {
+                    const objState = this._getStateOrNew(state)
+                    objState.exitActions.push(new EntryExitAction(state, cb))
+                }
             }
 
             declareTransition(state: number, trigger: number, toList: number[], cb: (triggerArgs: number[]) => void) {
-                const objState = this._getStateOrNew(state)
-                objState.transitions.push(new Transition(toList, trigger, cb))
+                if (ProcState.Idle == this._procNext) {
+                    const objState = this._getStateOrNew(state)
+                    objState.transitions.push(new Transition(state, toList, trigger, cb))
+                }
             }
 
             _procStart() {
@@ -503,17 +529,17 @@ namespace mstate {
             _initialize() {
                 if (!this._initialized) {
                     this._initialized = true
-                    const that: StateMachine = this
+                    const inst: StateMachine = this
                     // update event handler
                     const updateEventId = this._updateEventId
                     const machineId = this.machine
                     control.onEvent(updateEventId, machineId, function () {
-                        that._update()
+                        inst._update()
                     })
                     // update event loop
                     const eventLoopInterval = this._eventLoopInterval
                     loops.everyInterval(eventLoopInterval, function () {
-                        that._raiseUpdateEvent()
+                        inst._raiseUpdateEvent()
                     })
                 }
             }
@@ -788,4 +814,50 @@ namespace mstate {
         mmachine.getStateMachine(aStateMachine).start(convId(aStateName))
     }
 
+    /**
+     * export UML, PlantUML
+     * PlantUML Web server: http://www.plantuml.com/plantuml/
+     * @param aStateMachine
+     * @param aStateName default state
+     * @param enabled
+     * @param body code to run
+     */
+    //% block="UML $aStateMachine $aStateName $enabled $line"
+    //% aStateMachine.defl=Machines.M0
+    //% aStateName.defl="a"
+    //% enabled.shadow="toggleOnOff"
+    //% enabled.defl=true
+    //% draggableParameters="reporter"
+    //% handlerStatement
+    //% weight=70
+    //% group="Command"
+    export function exportUml(aStateMachine: StateMachines, aStateName: string, enabled: boolean, body: (line: string) => void) {
+        if (enabled) {
+            
+            body("@startuml")
+            //cb("' PlantUML Web server:")
+            body("' http://www.plantuml.com/plantuml/")
+            // top state - machine name
+            body("state __MachineM" + aStateMachine + "__ {")
+
+            // start
+            body("[*] --> " + aStateName)
+            
+            // target machine
+            const target = mmachine.getStateMachine(aStateMachine)
+            for (const state of target._states) {
+                // state
+                body("state " + mstate.convName(state.state))
+                for (const trans of state.transitions) {
+                    // transition
+                    for (const to_ of trans.toList) {
+                        body(mstate.convName(trans.state) + " --> " + (mname.NONE_ID == to_) ? "[*]" : mstate.convName(to_))
+                    }
+                }
+            }
+
+            body("}") // top state - machine name
+            body("@enduml")
+        }
+    }
 }
