@@ -13,14 +13,6 @@ function blinkLED() {
     }
 }
 
-// simple transition
-function transition(machine: number, state: number, triggerName: string, stateNameTo: string) {
-    mstate.declareTransition(machine, state, triggerName, [stateNameTo], function (args) {
-        mstate.transitTo(machine, 0)
-        mode = 0
-    })
-}
-
 // State Off
 // entry/
 // - LED off
@@ -28,7 +20,11 @@ mstate.defineState(StateMachines.M0, "Off", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
         basic.clearScreen()
     })
-    transition(machine, state, "A", "On")
+    mstate.declareExit(machine, state, function () {
+        led.setBrightness(255)
+        basic.showString("Power!")
+    })
+    mstate.declareSimpleTransition(machine, state, "A", "On")
 })
 
 // Stete On
@@ -41,9 +37,9 @@ mstate.defineState(StateMachines.M0, "On", function (machine, state) {
         blinkNext = 0
         basic.showIcon(IconNames.Heart)
     })
-    transition(machine, state, "A", "Slow")
-    transition(machine, state, "B", "Off")
-    transition(machine, state, "Auto", "Slow")
+    mstate.declareSimpleTransition(machine, state, "A", "Slow")
+    mstate.declareSimpleTransition(machine, state, "B", "Off")
+    mstate.declareSimpleTransition(machine, state, "Auto", "Slow")
 })
 
 // State Slow
@@ -64,13 +60,13 @@ mstate.defineState(StateMachines.M0, "Slow", function (machine, state) {
             blinkLED()
         }
     })
-    mstate.declareTransition(machine, state, "", ["Fast"], function (args) {
+    mstate.declareCustomTransition(machine, state, "", ["Fast"], function (args) {
         if (0 > blinkCount) {
             mstate.transitTo(machine, 0)
         }
     })
-    transition(machine, state, "A", "Fast")
-    transition(machine, state, "B", "Off")
+    mstate.declareSimpleTransition(machine, state, "A", "Fast")
+    mstate.declareSimpleTransition(machine, state, "B", "Off")
 })
 
 // State Fast
@@ -91,13 +87,14 @@ mstate.defineState(StateMachines.M0, "Fast", function (machine, state) {
             blinkLED()
         }
     })
-    mstate.declareTransition(machine, state, "", ["Slow"], function (args) {
+    mstate.declareCustomTransition(machine, state, "", ["Slow"], function (args) {
         if (0 > blinkCount) {
             mstate.transitTo(machine, 0)
         }
     })
-    transition(machine, state, "A", "On")
-    transition(machine, state, "B", "Off")
+    mstate.declareSimpleTransition(machine, state, "A", "On")
+    mstate.declareSimpleTransition(machine, state, "B", "Off")
+    mstate.declareTimeoutedTransition(machine, state, 5000, "On")
 })
 
 input.onButtonPressed(Button.A, function () {
