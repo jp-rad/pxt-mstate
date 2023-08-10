@@ -80,9 +80,9 @@ namespace mstate {
         const TRANSITION_CANCELED = -1
 
         /**
-         * Entry Action
+         * Entry/Exit Action
          */
-        class EntryAction {
+        class EntryExitAction {
             /**
              * state id.
              */
@@ -195,11 +195,15 @@ namespace mstate {
             /**
              * array of entry action
              */
-            entryActions: EntryAction[]
+            entryActions: EntryExitAction[]
             /**
              * array of do activity
              */
             doActivities: DoActivity[]
+            /**
+             * array of exit action
+             */
+            exitActions: EntryExitAction[]
             /**
              * array of transition
              */
@@ -209,6 +213,7 @@ namespace mstate {
                 this.state = state
                 this.entryActions = []
                 this.doActivities = []
+                this.exitActions = []
                 this.transitions = []
             }
         }
@@ -244,8 +249,10 @@ namespace mstate {
             Into,
             Enter,
             Do,
-            Transit,
-            Pause
+            CompletionTransit,
+            Pause,
+            TriggeredTransit,
+            Exit
         }
 
         enum ProcNextBehavior {
@@ -316,7 +323,7 @@ namespace mstate {
                 this._defaultState = mname.NONE_ID
 
                 this._states = []
-                
+
                 // current
                 this._state = undefined
 
@@ -355,7 +362,7 @@ namespace mstate {
             declareEntry(state: number, cb: () => void) {
                 if (ProcState.Idle == this._procNext) {
                     const objState = this._getStateOrNew(state)
-                    objState.entryActions.push(new EntryAction(state, cb))
+                    objState.entryActions.push(new EntryExitAction(state, cb))
                 }
             }
 
@@ -363,6 +370,13 @@ namespace mstate {
                 if (ProcState.Idle == this._procNext) {
                     const objState = this._getStateOrNew(state)
                     objState.doActivities.push(new DoActivity(state, ms, cb))
+                }
+            }
+
+            declareExit(state: number, cb: () => void) {
+                if (ProcState.Idle == this._procNext) {
+                    const objState = this._getStateOrNew(state)
+                    objState.exitActions.push(new EntryExitAction(state, cb))
                 }
             }
 
@@ -380,6 +394,7 @@ namespace mstate {
             _procInto() {
                 this._state = this._getStateOrNew(this._transitTo)
                 this._timeoutMillis = control.millis()
+                return undefined !== this._state
             }
 
             _procEnter() {
@@ -392,6 +407,12 @@ namespace mstate {
                 const tick = control.millis()
                 for (const v of this._state.doActivities) {
                     v.execute(tick)
+                }
+            }
+
+            _procExit() {
+                for (const v of this._state.exitActions) {
+                    v.execute()
                 }
             }
 
@@ -444,8 +465,7 @@ namespace mstate {
                         ret = ProcNextBehavior.Event    // event, for start() function.
                         break;
                     case ProcState.Into:
-                        this._procInto()
-                        if (this._state) {
+                        if (this._procInto()) {
                             this._procNext = ProcState.Enter
                         } else {
                             // (INITIAL or FINAL)
@@ -458,18 +478,31 @@ namespace mstate {
                         break;
                     case ProcState.Do:
                         this._procDo()
-                        this._procNext = ProcState.Transit
-                        ret = ProcNextBehavior.Event    // event
+                        this._procNext = ProcState.CompletionTransit
                         break;
-                    case ProcState.Transit:
+                    case ProcState.CompletionTransit:
                         if (this._procCompletionTransition()) {
-                            this._procNext = ProcState.Into
-                        } else if (this._procTriggeredTransition()) {
-                            this._procNext = ProcState.Into
+                            this._procNext = ProcState.Exit
+                        } else {
+                            this._procNext = ProcState.Pause
+                            ret = ProcNextBehavior.Event    // event
+                        }
+                        break;
+                    case ProcState.Pause:
+                        this._procNext = ProcState.TriggeredTransit
+                        break;
+                    case ProcState.TriggeredTransit:
+                        if (this._procTriggeredTransition()) {
+                            this._procNext = ProcState.Exit
                         } else {
                             this._procNext = ProcState.Do
                         }
                         break;
+                    case ProcState.Exit:
+                        this._procExit()
+                        this._procNext = ProcState.Into
+                        break;
+                    case ProcState.Panic:
                     default:
                         // panic
                         this._procNext = ProcState.Panic
@@ -589,7 +622,7 @@ namespace mstate {
     //% aStateMachine.defl=Machines.M0
     //% aStateName.defl="a"
     //% draggableParameters="reporter"
-    //% weight=140
+    //% weight=180
     //% group="Declare"
     export function defineState(aStateMachine: StateMachines, aStateName: string,
         body: (machine: number, state: number) => void
@@ -599,7 +632,6 @@ namespace mstate {
 
     /**
      * declare ENTRY action.
-     * prev is a previous state.
      * @param aMachine machine ID
      * @param aState state ID
      * @param body code to run
@@ -608,7 +640,7 @@ namespace mstate {
     //% aMachine.defl=0
     //% aState.defl=0
     //% handlerStatement
-    //% weight=130
+    //% weight=170
     //% group="Declare"
     export function declareEntry(aMachine: number, aState: number,
         body: () => void
@@ -628,7 +660,7 @@ namespace mstate {
     //% aState.defl=0
     //% aEvery.shadow="timePicker"
     //% handlerStatement
-    //% weight=120
+    //% weight=160
     //% group="Declare"
     export function declareDo(aMachine: number, aState: number, aEvery: number,
         body: () => void
@@ -637,7 +669,69 @@ namespace mstate {
     }
 
     /**
-     * declare selectable transition.
+     * declare EXIT action.
+     * @param aMachine machine ID
+     * @param aState state ID
+     * @param body code to run
+     */
+    //% block="on exit [$aMachine,$aState]"
+    //% aMachine.defl=0
+    //% aState.defl=0
+    //% handlerStatement
+    //% weight=150
+    //% group="Declare"
+    export function declareExit(aMachine: number, aState: number,
+        body: () => void
+    ) {
+        mmachine.getStateMachine(aMachine).declareExit(aState, body)
+    }
+
+    /**
+     * declare simple transition.
+     * @param aMachine machine ID
+     * @param aState state ID
+     * @param aTriggerName trigger name
+     * @param aToName next state nam
+     */
+    //% block="trasition [$aMachine,$aState] when $aTriggerName to $aToName"
+    //% aMachine.defl=0
+    //% aState.defl=0
+    //% aTriggerName.defl="e"
+    //% aToName.defl="a"
+    //% inlineInputMode=inline
+    //% weight=140
+    //% group="Transition"
+    export function declareSimpleTransition(aMachine: number, aState: number, aTriggerName: string, aToName: string) {
+        declareCustomTransition(aMachine, aState, aTriggerName, [aToName], function (args) {
+            mstate.transitTo(aMachine, 0)
+        })
+    }
+
+    /**
+     * declare timeouted transition.
+     * @param aMachine machine ID
+     * @param aState state ID
+     * @param aMs timeout (ms)
+     * @param aToName next state name
+     */
+    //% block="trasition [$aMachine,$aState] timeouted $aMs to $aToName"
+    //% aMachine.defl=0
+    //% aState.defl=0
+    //% aMs.shadow="timePicker"
+    //% aToName.defl="a"
+    //% inlineInputMode=inline
+    //% weight=130
+    //% group="Transition"
+    export function declareTimeoutedTransition(aMachine: number, aState: number, aMs: number, aToName: string) {
+        declareCustomTransition(aMachine, aState, "", [aToName], function (args) {
+            if (mstate.isTimeouted(aMachine, aMs)) {
+                mstate.transitTo(aMachine, 0)
+            }
+        })
+    }
+
+    /**
+     * declare custom transition.
      * @param aMachine machine ID
      * @param aState state ID
      * @param aTriggerName trigger name
@@ -650,9 +744,9 @@ namespace mstate {
     //% aTriggerName.defl="e"
     //% draggableParameters="reporter"
     //% handlerStatement
-    //% weight=150
+    //% weight=120
     //% group="Transition"
-    export function declareTransition(aMachine: number, aState: number, aTriggerName: string, aTransList: string[],
+    export function declareCustomTransition(aMachine: number, aState: number, aTriggerName: string, aTransList: string[],
         body: (args: number[]) => void
     ) {
         const trigger = convId(aTriggerName)
@@ -671,7 +765,7 @@ namespace mstate {
     //% block="timeouted [$aMachine] $aMs"
     //% aMachine.defl=0
     //% aMs.shadow="timePicker"
-    //% weight=125
+    //% weight=110
     //% group="Transition"
     export function isTimeouted(aMachine: number, aMs: number): boolean {
         return mmachine.getStateMachine(aMachine).timeouted(aMs)
@@ -685,7 +779,7 @@ namespace mstate {
     //% block="transit [$aMachine] at $index"
     //% aMachine.defl=0
     //% index.defl=0
-    //% weight=110
+    //% weight=100
     //% group="Transition"
     export function transitTo(aMachine: number, index: number) {
         mmachine.getStateMachine(aMachine).selectToAt(index)
@@ -700,7 +794,7 @@ namespace mstate {
     //% block="fire $aStateMachine $aTriggerName $aTriggerArgs"
     //% aStateMachine.defl=Machines.M0
     //% aTriggerName.defl="e"
-    //% weight=100
+    //% weight=90
     //% group="Command"
     export function fire(aStateMachine: StateMachines, aTriggerName: string, aTriggerArgs: number[]) {
         mmachine.getStateMachine(aStateMachine).fire(convId(aTriggerName), aTriggerArgs)
@@ -714,7 +808,7 @@ namespace mstate {
     //% block="start $aStateMachine $aStateName"
     //% aStateMachine.defl=Machines.M0
     //% aStateName.defl="a"
-    //% weight=90
+    //% weight=80
     //% group="Command"
     export function start(aStateMachine: StateMachines, aStateName: string) {
         mmachine.getStateMachine(aStateMachine).start(convId(aStateName))

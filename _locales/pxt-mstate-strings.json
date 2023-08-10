@@ -1,9 +1,12 @@
 {
   "mstate.convId|block": "id of $name",
   "mstate.convName|block": "name of $id",
+  "mstate.declareCustomTransition|block": "trasition [$aMachine,$aState] when $aTriggerName $args to $aTransList",
   "mstate.declareDo|block": "on do [$aMachine,$aState] every $aEvery ms",
   "mstate.declareEntry|block": "on entry [$aMachine,$aState]",
-  "mstate.declareTransition|block": "trasition [$aMachine,$aState] when $aTriggerName $args to $aTransList",
+  "mstate.declareExit|block": "on exit [$aMachine,$aState]",
+  "mstate.declareSimpleTransition|block": "trasition [$aMachine,$aState] when $aTriggerName to $aToName",
+  "mstate.declareTimeoutedTransition|block": "trasition [$aMachine,$aState] timeouted $aMs to $aToName",
   "mstate.defineState|block": "define [$machine,$state] to $aStateMachine $aStateName",
   "mstate.fire|block": "fire $aStateMachine $aTriggerName $aTriggerArgs",
   "mstate.isTimeouted|block": "timeouted [$aMachine] $aMs",
