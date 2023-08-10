@@ -83,10 +83,6 @@ namespace mstate {
          * Entry/Exit Action
          */
         class EntryExitAction {
-            /**
-             * state id.
-             */
-            state: number
 
             /**
              * execute Entry.
@@ -95,11 +91,9 @@ namespace mstate {
 
             /**
              * constructor
-             * @param state state id
              * @param cb code to run
              */
-            constructor(state: number, cb: () => void) {
-                this.state = state
+            constructor(cb: () => void) {
                 this.execute = cb
             }
         }
@@ -108,10 +102,6 @@ namespace mstate {
          * Do Activity
          */
         class DoActivity {
-            /**
-             * state id.
-             */
-            state: number
 
             // callback
             _cb: () => void
@@ -120,12 +110,10 @@ namespace mstate {
 
             /**
              * constructor
-             * @param state (States) state
              * @param ms interval (ms)
              * @param cb code to run
              */
-            constructor(state: number, ms: number, cb: () => void) {
-                this.state = state
+            constructor(ms: number, cb: () => void) {
                 this._cb = cb
                 this._ms = ms
                 this._nextTick = -1
@@ -155,10 +143,6 @@ namespace mstate {
          */
         class Transition {
             /**
-             * state id, transition from.
-             */
-            state: number
-            /**
              * array of state id, transition to.
              */
             toList: number[]
@@ -174,13 +158,11 @@ namespace mstate {
 
             /**
              * constructor
-             * @param state state id, transition from
              * @param toList array of state id, transition to
              * @param trigger trigger id
              * @param cb run to code, (triggerArgs: number[]) => void
              */
-            constructor(state: number, toList: number[], trigger: number, cb: (triggerArgs: number[]) => void) {
-                this.state = state
+            constructor(toList: number[], trigger: number, cb: (triggerArgs: number[]) => void) {
                 this.toList = toList
                 this.trigger = trigger
                 this.execute = cb
@@ -360,31 +342,23 @@ namespace mstate {
             }
 
             declareEntry(state: number, cb: () => void) {
-                if (ProcState.Idle == this._procNext) {
-                    const objState = this._getStateOrNew(state)
-                    objState.entryActions.push(new EntryExitAction(state, cb))
-                }
+                const objState = this._getStateOrNew(state)
+                objState.entryActions.push(new EntryExitAction(cb))
             }
 
             declareDo(state: number, ms: number, cb: () => void) {
-                if (ProcState.Idle == this._procNext) {
-                    const objState = this._getStateOrNew(state)
-                    objState.doActivities.push(new DoActivity(state, ms, cb))
-                }
+                const objState = this._getStateOrNew(state)
+                objState.doActivities.push(new DoActivity(ms, cb))
             }
 
             declareExit(state: number, cb: () => void) {
-                if (ProcState.Idle == this._procNext) {
-                    const objState = this._getStateOrNew(state)
-                    objState.exitActions.push(new EntryExitAction(state, cb))
-                }
+                const objState = this._getStateOrNew(state)
+                objState.exitActions.push(new EntryExitAction(cb))
             }
 
             declareTransition(state: number, trigger: number, toList: number[], cb: (triggerArgs: number[]) => void) {
-                if (ProcState.Idle == this._procNext) {
-                    const objState = this._getStateOrNew(state)
-                    objState.transitions.push(new Transition(state, toList, trigger, cb))
-                }
+                const objState = this._getStateOrNew(state)
+                objState.transitions.push(new Transition(toList, trigger, cb))
             }
 
             _procStart() {
@@ -529,17 +503,17 @@ namespace mstate {
             _initialize() {
                 if (!this._initialized) {
                     this._initialized = true
-                    const inst: StateMachine = this
+                    const that: StateMachine = this
                     // update event handler
                     const updateEventId = this._updateEventId
                     const machineId = this.machine
                     control.onEvent(updateEventId, machineId, function () {
-                        inst._update()
+                        that._update()
                     })
                     // update event loop
                     const eventLoopInterval = this._eventLoopInterval
                     loops.everyInterval(eventLoopInterval, function () {
-                        inst._raiseUpdateEvent()
+                        that._raiseUpdateEvent()
                     })
                 }
             }
