@@ -788,4 +788,45 @@ namespace mstate {
         mmachine.getStateMachine(aStateMachine).start(convId(aStateName))
     }
 
+    /**
+     * export UML, PlantUML
+     * PlantUML Web server: http://www.plantuml.com/plantuml/
+     * @param aStateMachine
+     * @param aStateName default state
+     */
+    //% block="UML $aStateMachine $aStateName"
+    //% aStateMachine.defl=Machines.M0
+    //% aStateName.defl="a"
+    //% weight=70
+    //% group="Command"
+    //% shim=mstate::export_uml
+    export function exportUml(aStateMachine: StateMachines, aStateName: string) {
+        // for the simulator
+        const cb = console.log
+        cb("@startuml")
+        //cb("' PlantUML Web server:")
+        cb("' http://www.plantuml.com/plantuml/")
+        // top state - machine name
+        cb("state __M" + aStateMachine + "__ {")
+
+        // start
+        cb("[*] --> " + aStateName)
+
+        // target machine
+        const target = mmachine.getStateMachine(aStateMachine)
+        for (const state of target._states) {
+            // state
+            cb("state " + mstate.convName(state.state))
+            for (const trans of state.transitions) {
+                // transition
+                const desc = mstate.convName(trans.trigger)
+                for (const to_ of trans.toList) {
+                    cb(mstate.convName(state.state) + " --> " + (mname.NONE_ID == to_ ? "[*]" : mstate.convName(to_)) + ("" == desc ? "" : " : " + desc))
+                }
+            }
+        }
+
+        cb("}") // top state - machine name
+        cb("@enduml")
+    }
 }
