@@ -8,6 +8,7 @@
   "mstate.declareSimpleTransition|block": "trasition [$aMachine,$aState] when $aTriggerName to $aToName",
   "mstate.declareTimeoutedTransition|block": "trasition [$aMachine,$aState] timeouted $aMs to $aToName",
   "mstate.defineState|block": "define [$machine,$state] to $aStateMachine $aStateName",
+  "mstate.exportUml|block": "UML $aStateMachine $aStateName",
   "mstate.fire|block": "fire $aStateMachine $aTriggerName $aTriggerArgs",
   "mstate.isTimeouted|block": "timeouted [$aMachine] $aMs",
   "mstate.start|block": "start $aStateMachine $aStateName",

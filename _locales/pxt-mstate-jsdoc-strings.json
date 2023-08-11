@@ -37,6 +37,8 @@
   "mstate.defineState|param|aStateMachine": "StateMachines",
   "mstate.defineState|param|aStateName": "state name",
   "mstate.defineState|param|body": "code to run, (machine: machine ID, state: state ID)",
+  "mstate.exportUml": "export UML, PlantUML\r\nPlantUML Web server: http://www.plantuml.com/plantuml/",
+  "mstate.exportUml|param|aStateMachine": "@param aStateName default state",
   "mstate.fire": "fire trigger",
   "mstate.fire|param|aStateMachine": "StateMachines",
   "mstate.fire|param|aTriggerArgs": "args",
