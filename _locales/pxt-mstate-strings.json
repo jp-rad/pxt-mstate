@@ -1,4 +1,6 @@
 {
+  "mstate._simuStateUml|block": "true",
+  "mstate._simuTransitionUml|block": "true",
   "mstate.convId|block": "id of $name",
   "mstate.convName|block": "name of $id",
   "mstate.declareCustomTransition|block": "trasition [$aMachine,$aState] when $aTriggerName $args to $aTransList",
@@ -11,6 +13,7 @@
   "mstate.exportUml|block": "UML $aStateMachine $aStateName",
   "mstate.fire|block": "fire $aStateMachine $aTriggerName $aTriggerArgs",
   "mstate.isTimeouted|block": "timeouted [$aMachine] $aMs",
+  "mstate.settingsMachineEvent|block": "settings [$aStateMachine] event ID: $eventId every: $ms ms",
   "mstate.start|block": "start $aStateMachine $aStateName",
   "mstate.transitTo|block": "transit [$aMachine] at $index",
   "mstate|block": "mstate",
