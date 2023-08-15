@@ -38,32 +38,34 @@ This image may take a few minutes to refresh.
 **Example**
 
 ```javascript
-let blink = 0
 function blinkLED () {
     led.setBrightness(blink * 155 + 100)
     blink += 1
     blink = blink % 2
 }
-mstate.defineStateName("State1", function (STATE) {
-    mstate.declareEntry(STATE, function (prev) {
+mstate.defineState(StateMachines.M0, "State1", function (machine, state) {
+    mstate.declareEntry(machine, state, function () {
         blink = 0
         basic.showIcon(IconNames.Heart)
     })
-    mstate.declareDo(STATE, 500, function () {
+    mstate.declareDo(machine, state, 500, function () {
         blinkLED()
     })
-    mstate.declareExit(STATE, function (next) {
+    mstate.declareExit(machine, state, function () {
         led.setBrightness(255)
         basic.showIcon(IconNames.Happy)
     })
-    mstate.declareTransition(STATE, "*", "Trigger1")
+    mstate.declareSimpleTransition(machine, state, "Trigger1", "")
 })
 input.onButtonPressed(Button.A, function () {
-    mstate.start("State1")
+    mstate.start(StateMachines.M0, "State1")
 })
 input.onButtonPressed(Button.B, function () {
-    mstate.fire("Trigger1")
+    mstate.fire(StateMachines.M0, "Trigger1", [])
 })
+let blink = 0
+mstate.exportUml(StateMachines.M0, "State1")
+
 ```
 
 #### Metadata (used for search, rendering)

@@ -82,7 +82,7 @@ namespace mstate {
         /**
          * Entry/Exit Action
          */
-        class EntryExitAction {
+        export class EntryExitAction {
 
             /**
              * execute Entry.
@@ -101,12 +101,12 @@ namespace mstate {
         /**
          * Do Activity
          */
-        class DoActivity {
+        export class DoActivity {
 
             // callback
             _cb: () => void
             _ms: number
-            _nextTick: number
+            nextTick: number
 
             /**
              * constructor
@@ -116,14 +116,7 @@ namespace mstate {
             constructor(ms: number, cb: () => void) {
                 this._cb = cb
                 this._ms = ms
-                this._nextTick = -1
-            }
-
-            /**
-             * force callback, execute DO
-             */
-            forceTick() {
-                this._nextTick = -1
+                //this._nextTick = -1
             }
 
             /**
@@ -131,9 +124,9 @@ namespace mstate {
              * @param tick the number of milliseconds elapsed since power on, control.millis().
              */
             execute(tick: number) {
-                if (tick > this._nextTick) {
+                if (tick > this.nextTick) {
                     this._cb()
-                    this._nextTick = tick + this._ms
+                    this.nextTick = tick + this._ms
                 }
             }
         }
@@ -141,7 +134,7 @@ namespace mstate {
         /**
          * Transition
          */
-        class Transition {
+        export class Transition {
             /**
              * array of state id, transition to.
              */
@@ -225,7 +218,6 @@ namespace mstate {
         }
 
         enum ProcState {
-            Panic,
             Idle,
             Start,
             Into,
@@ -235,12 +227,6 @@ namespace mstate {
             Pause,
             TriggeredTransit,
             Exit
-        }
-
-        enum ProcNextBehavior {
-            Break,
-            Loop,
-            Event
         }
 
         class StateMachine {
@@ -254,7 +240,6 @@ namespace mstate {
             _initialized: boolean
             _updateEventId: number
             _eventLoopInterval: number
-            _enabledUpdateEvent: boolean
 
             /**
              * next proc
@@ -301,7 +286,6 @@ namespace mstate {
                 this._initialized = false
                 this._updateEventId = DEFAULT_UPDATE_EVENT_ID
                 this._eventLoopInterval = DEFAULT_EVENT_LOOP_INTERVAL
-                this._enabledUpdateEvent = false
                 this._defaultState = mname.NONE_ID
 
                 this._states = []
@@ -328,7 +312,7 @@ namespace mstate {
              * @param stete state id
              * @returns instance of State, undefined if NONE_ID. 
              */
-            _getStateOrNew(state: number) {
+            getStateOrNew(state: number) {
                 if (mname.NONE_ID < state) {
                     const obj = this._states.find(item => state == item.state)
                     if (undefined !== obj) {
@@ -339,55 +323,6 @@ namespace mstate {
                     return newObj
                 }
                 return undefined
-            }
-
-            declareEntry(state: number, cb: () => void) {
-                const objState = this._getStateOrNew(state)
-                objState.entryActions.push(new EntryExitAction(cb))
-            }
-
-            declareDo(state: number, ms: number, cb: () => void) {
-                const objState = this._getStateOrNew(state)
-                objState.doActivities.push(new DoActivity(ms, cb))
-            }
-
-            declareExit(state: number, cb: () => void) {
-                const objState = this._getStateOrNew(state)
-                objState.exitActions.push(new EntryExitAction(cb))
-            }
-
-            declareTransition(state: number, trigger: number, toList: number[], cb: (triggerArgs: number[]) => void) {
-                const objState = this._getStateOrNew(state)
-                objState.transitions.push(new Transition(toList, trigger, cb))
-            }
-
-            _procStart() {
-                this._transitTo = this._defaultState
-            }
-
-            _procInto() {
-                this._state = this._getStateOrNew(this._transitTo)
-                this._timeoutMillis = control.millis()
-                return undefined !== this._state
-            }
-
-            _procEnter() {
-                for (const v of this._state.entryActions) {
-                    v.execute()
-                }
-            }
-
-            _procDo() {
-                const tick = control.millis()
-                for (const v of this._state.doActivities) {
-                    v.execute(tick)
-                }
-            }
-
-            _procExit() {
-                for (const v of this._state.exitActions) {
-                    v.execute()
-                }
             }
 
             _doCallbackSelectable(transition: Transition, triggerArgs: number[]) {
@@ -427,99 +362,89 @@ namespace mstate {
                 return false
             }
 
-            _proc(): ProcNextBehavior {
-                let ret = ProcNextBehavior.Loop // (default) loop
-                switch (this._procNext) {
-                    case ProcState.Idle:
-                        ret = ProcNextBehavior.Break    // break
-                        break;
-                    case ProcState.Start:
-                        this._procStart()
-                        this._procNext = ProcState.Into
-                        ret = ProcNextBehavior.Event    // event, for start() function.
-                        break;
-                    case ProcState.Into:
-                        if (this._procInto()) {
-                            this._procNext = ProcState.Enter
-                        } else {
-                            // (INITIAL or FINAL)
-                            this._procNext = ProcState.Idle
-                        }
-                        break;
-                    case ProcState.Enter:
-                        this._procEnter()
-                        this._procNext = ProcState.Do
-                        break;
-                    case ProcState.Do:
-                        this._procDo()
-                        this._procNext = ProcState.CompletionTransit
-                        break;
-                    case ProcState.CompletionTransit:
-                        if (this._procCompletionTransition()) {
-                            this._procNext = ProcState.Exit
-                        } else {
-                            this._procNext = ProcState.Pause
-                            ret = ProcNextBehavior.Event    // event
-                        }
-                        break;
-                    case ProcState.Pause:
-                        this._procNext = ProcState.TriggeredTransit
-                        break;
-                    case ProcState.TriggeredTransit:
-                        if (this._procTriggeredTransition()) {
-                            this._procNext = ProcState.Exit
-                        } else {
-                            this._procNext = ProcState.Do
-                        }
-                        break;
-                    case ProcState.Exit:
-                        this._procExit()
-                        this._procNext = ProcState.Into
-                        break;
-                    case ProcState.Panic:
-                    default:
-                        // panic
-                        this._procNext = ProcState.Panic
-                        ret = ProcNextBehavior.Break    // break
-                        break;
-                }
-                return ret
-            }
-
             _update() {
-                let next: ProcNextBehavior
+                let loop = true
                 do {
-                    next = this._proc()
-                } while (ProcNextBehavior.Loop == next)
-                this._enabledUpdateEvent = (ProcNextBehavior.Event == next)
+                    switch (this._procNext) {
+                        case ProcState.Start:
+                            this._transitTo = this._defaultState
+                            this._procNext = ProcState.Into
+                            loop = false    // break
+                            break;
+                        case ProcState.Into:
+                            this._state = this.getStateOrNew(this._transitTo)
+                            this._timeoutMillis = control.millis()
+                            if (undefined !== this._state) {
+                                for (const v of this._state.doActivities) {
+                                    v.nextTick = -1
+                                }
+                                this._procNext = ProcState.Enter
+                            } else {
+                                // (INITIAL or FINAL)
+                                while (0 < this._triggerQueue.length) {
+                                    this._triggerQueue.shift()
+                                }
+                                this._procNext = ProcState.Idle
+                            }
+                            break;
+                        case ProcState.Enter:
+                            for (const v of this._state.entryActions) {
+                                v.execute()
+                            }
+                            this._procNext = ProcState.Do
+                            break;
+                        case ProcState.Do:
+                            const tick = control.millis()
+                            for (const v of this._state.doActivities) {
+                                v.execute(tick)
+                            }
+                            this._procNext = ProcState.CompletionTransit
+                            break;
+                        case ProcState.CompletionTransit:
+                            if (this._procCompletionTransition()) {
+                                this._procNext = ProcState.Exit
+                            } else {
+                                this._procNext = ProcState.Pause
+                                loop = false    // break
+                            }
+                            break;
+                        case ProcState.Pause:
+                            this._procNext = ProcState.TriggeredTransit
+                            break;
+                        case ProcState.TriggeredTransit:
+                            if (this._procTriggeredTransition()) {
+                                this._procNext = ProcState.Exit
+                            } else {
+                                this._procNext = ProcState.Do
+                            }
+                            break;
+                        case ProcState.Exit:
+                            for (const v of this._state.exitActions) {
+                                v.execute()
+                            }
+                            this._procNext = ProcState.Into
+                            break;
+                        case ProcState.Idle:
+                        default:
+                            loop = false    // break
+                            break;
+                    }
+                } while (loop)
             }
 
-            _raiseUpdateEvent(force: boolean = false) {
-                if (force || this._enabledUpdateEvent) {
-                    control.raiseEvent(this._updateEventId, this.machine)
-                }
-            }
-
-            _initialize() {
+            start(state: number): boolean {
                 if (!this._initialized) {
                     this._initialized = true
                     const that: StateMachine = this
                     // update event handler
-                    const updateEventId = this._updateEventId
-                    const machineId = this.machine
-                    control.onEvent(updateEventId, machineId, function () {
+                    control.onEvent(this._updateEventId, this.machine, function () {
                         that._update()
                     })
                     // update event loop
-                    const eventLoopInterval = this._eventLoopInterval
-                    loops.everyInterval(eventLoopInterval, function () {
-                        that._raiseUpdateEvent()
+                    loops.everyInterval(this._eventLoopInterval, function () {
+                        control.raiseEvent(that._updateEventId, that.machine)
                     })
                 }
-            }
-
-            start(state: number): boolean {
-                this._initialize()
                 if (ProcState.Idle == this._procNext) {
                     this._defaultState = state
                     this._procNext = ProcState.Start
@@ -531,21 +456,13 @@ namespace mstate {
             }
 
             fire(trigger: number, args: number[]) {
-                if ((ProcState.Idle != this._procNext) && (ProcState.Panic != this._procNext)) {
+                if (ProcState.Idle != this._procNext) {
                     // queuing
                     const triggerArgs = new TriggerWithArgs(trigger, args)
                     this._triggerQueue.push(triggerArgs)
                     // update event
-                    this._raiseUpdateEvent(true)
+                    control.raiseEvent(this._updateEventId, this.machine)
                 }
-            }
-
-            selectToAt(index: number) {
-                this._selectedToAt = index
-            }
-
-            timeouted(ms: number) {
-                return control.millis() > this._timeoutMillis + ms
             }
         }
 
@@ -563,6 +480,10 @@ namespace mstate {
         }
     }
 
+    function splitFirst(s: string) {
+        return s.split(":", 1)[0]
+    }
+
     /**
      * convert state/trigger name (string) to id (number): new id if undefined
      * @param name state name (string) or trigger name (string)
@@ -571,6 +492,7 @@ namespace mstate {
     //% block="id of $name"
     //% name.defl="a"
     //% weight=210
+    //% advanced=true
     export function convId(name: string): number {
         return mname.getIdOrNew(name)
     }
@@ -582,8 +504,30 @@ namespace mstate {
      */
     //% block="name of $id"
     //% weight=200
+    //% advanced=true
     export function convName(id: number): string {
         return mname.getName(id)
+    }
+
+    /**
+     * Internal event settings
+     * @param aStateMachine StateMachines
+     * @param eventId Event ID (default: 32868 = 32768 + 100)
+     * @param ms Event loop interval (default: 100ms)
+     */
+    //% block="settings [$aStateMachine] event ID: $eventId every: $ms ms"
+    //% aStateMachine.defl=StateMachines.M0
+    //% eventId.defl=32768
+    //% ms.shadow="timePicker"
+    //% ms.defl=100
+    //% weight=190
+    //% advanced=true
+    export function settingsMachineEvent(aStateMachine: StateMachines, eventId: number, ms: number) {
+        const machine = mmachine.getStateMachine(aStateMachine)
+        if (!machine._initialized) {
+            machine._updateEventId = eventId
+            machine._eventLoopInterval = ms
+        }
     }
 
     /**
@@ -593,7 +537,7 @@ namespace mstate {
      * @param body code to run, (machine: machine ID, state: state ID)
      */
     //% block="define [$machine,$state] to $aStateMachine $aStateName"
-    //% aStateMachine.defl=Machines.M0
+    //% aStateMachine.defl=StateMachines.M0
     //% aStateName.defl="a"
     //% draggableParameters="reporter"
     //% weight=180
@@ -601,7 +545,9 @@ namespace mstate {
     export function defineState(aStateMachine: StateMachines, aStateName: string,
         body: (machine: number, state: number) => void
     ) {
-        body(aStateMachine, convId(aStateName))
+        body(aStateMachine, convId(splitFirst(aStateName)))
+        // uml
+        _simuStateUml(aStateMachine, aStateName)
     }
 
     /**
@@ -619,7 +565,7 @@ namespace mstate {
     export function declareEntry(aMachine: number, aState: number,
         body: () => void
     ) {
-        mmachine.getStateMachine(aMachine).declareEntry(aState, body)
+        mmachine.getStateMachine(aMachine).getStateOrNew(aState).entryActions.push(new mmachine.EntryExitAction(body))
     }
 
     /**
@@ -639,7 +585,7 @@ namespace mstate {
     export function declareDo(aMachine: number, aState: number, aEvery: number,
         body: () => void
     ) {
-        mmachine.getStateMachine(aMachine).declareDo(aState, aEvery, body)
+        mmachine.getStateMachine(aMachine).getStateOrNew(aState).doActivities.push(new mmachine.DoActivity(aEvery, body))
     }
 
     /**
@@ -657,7 +603,7 @@ namespace mstate {
     export function declareExit(aMachine: number, aState: number,
         body: () => void
     ) {
-        mmachine.getStateMachine(aMachine).declareExit(aState, body)
+        mmachine.getStateMachine(aMachine).getStateOrNew(aState).exitActions.push(new mmachine.EntryExitAction(body))
     }
 
     /**
@@ -724,11 +670,13 @@ namespace mstate {
         body: (args: number[]) => void
     ) {
         const trigger = convId(aTriggerName)
-        let toList: number[] = []
+        const toList: number[] = []
         for (const s of aTransList) {
-            toList.push(convId(s))
+            toList.push(convId(splitFirst(s)))
         }
-        mmachine.getStateMachine(aMachine).declareTransition(aState, trigger, toList, body)
+        mmachine.getStateMachine(aMachine).getStateOrNew(aState).transitions.push(new mmachine.Transition(toList, trigger, body))
+        // uml
+        _simuTransitionUml(aMachine, aState, aTransList)
     }
 
     /**
@@ -742,7 +690,7 @@ namespace mstate {
     //% weight=110
     //% group="Transition"
     export function isTimeouted(aMachine: number, aMs: number): boolean {
-        return mmachine.getStateMachine(aMachine).timeouted(aMs)
+        return control.millis() > mmachine.getStateMachine(aMachine)._timeoutMillis + aMs
     }
 
     /**
@@ -756,7 +704,7 @@ namespace mstate {
     //% weight=100
     //% group="Transition"
     export function transitTo(aMachine: number, index: number) {
-        mmachine.getStateMachine(aMachine).selectToAt(index)
+        mmachine.getStateMachine(aMachine)._selectedToAt = index
     }
 
     /**
@@ -766,7 +714,7 @@ namespace mstate {
      * @param aTriggerArgs args
      */
     //% block="fire $aStateMachine $aTriggerName $aTriggerArgs"
-    //% aStateMachine.defl=Machines.M0
+    //% aStateMachine.defl=StateMachines.M0
     //% aTriggerName.defl="e"
     //% weight=90
     //% group="Command"
@@ -780,7 +728,7 @@ namespace mstate {
      * @param aStateName default state name
      */
     //% block="start $aStateMachine $aStateName"
-    //% aStateMachine.defl=Machines.M0
+    //% aStateMachine.defl=StateMachines.M0
     //% aStateName.defl="a"
     //% weight=80
     //% group="Command"
@@ -795,11 +743,11 @@ namespace mstate {
      * @param aStateName default state
      */
     //% block="UML $aStateMachine $aStateName"
-    //% aStateMachine.defl=Machines.M0
+    //% aStateMachine.defl=StateMachines.M0
     //% aStateName.defl="a"
     //% weight=70
     //% group="Command"
-    //% shim=mstate::export_uml
+    //% shim=mstate::simu_export_uml
     export function exportUml(aStateMachine: StateMachines, aStateName: string) {
         // for the simulator
         const cb = console.log
@@ -816,12 +764,51 @@ namespace mstate {
         const target = mmachine.getStateMachine(aStateMachine)
         for (const state of target._states) {
             // state
-            cb("state " + mstate.convName(state.state))
+            const descStatePart = (state as any)["descState"] ? " : " + (state as any)["descState"] : ""
+            cb("state " + mstate.convName(state.state) + descStatePart)
             for (const trans of state.transitions) {
                 // transition
-                const desc = mstate.convName(trans.trigger)
-                for (const to_ of trans.toList) {
-                    cb(mstate.convName(state.state) + " --> " + (mname.NONE_ID == to_ ? "[*]" : mstate.convName(to_)) + ("" == desc ? "" : " : " + desc))
+                const trigger = mstate.convName(trans.trigger)
+                for (const descTo of ((trans as any)["descToList"] as string[])) {
+                    let arrow = true
+                    let toName: string
+                    let desc: string
+                    const pos = descTo.indexOf(":")
+                    if (0 <= pos) {
+                        toName = descTo.slice(0, pos)
+                        desc = descTo.slice(pos + 1)
+                    } else {
+                        toName = descTo
+                        desc = undefined
+                    }
+                    if (toName == "") {
+                        toName = "[*]"
+                    }
+                    let triggerPart = ""
+                    if (trigger) {
+                        triggerPart = triggerPart + trigger
+                    }
+                    if (desc) {
+                        if (":" == desc.charAt(0)) {
+                            arrow = false
+                            desc = desc.slice(1)
+                        }
+                        const a = desc.split("/", 2)
+                        if (a[0]) {
+                            triggerPart = triggerPart + " [" + a[0] + "]"
+                        }
+                        if (a[1]) {
+                            triggerPart = triggerPart + " / " + a[1]
+                        }
+                    }
+                    if (triggerPart) {
+                        triggerPart = " : " + triggerPart
+                    }
+                    if (arrow) {
+                        cb(mstate.convName(state.state) + " --> " + toName + triggerPart)
+                    } else {
+                        cb("state " + mstate.convName(state.state) + ": --> " + toName + triggerPart)
+                    }
                 }
             }
         }
@@ -829,4 +816,39 @@ namespace mstate {
         cb("}") // top state - machine name
         cb("@enduml")
     }
+
+    /**
+     * UML state
+     * @param aMachine  machine ID
+     * @param aStateName state name
+     */
+    //% block
+    //% shim=mstate::simu_state_uml
+    //% deprecated=true
+    export function _simuStateUml(aMachine: number, aStateName: string) {
+        // for the simulator
+        const pos = aStateName.indexOf(":")
+        if (0 <= pos) {
+            const name = aStateName.slice(0, pos)
+            const state: any = mmachine.getStateMachine(aMachine).getStateOrNew(convId(name))
+            state["descState"] = aStateName.slice(pos + 1)
+        }
+    }
+
+    /**
+     * UML transition
+     * @param aMachine machine ID
+     * @param aState state ID
+     * @param aTransList array of next state name
+     */
+    //% block
+    //% shim=mstate::simu_transition_uml
+    //% deprecated=true
+    export function _simuTransitionUml(aMachine: number, aState: number, aTransList: string[]) {
+        // for the simulator
+        const state = mmachine.getStateMachine(aMachine).getStateOrNew(aState)
+        const lastTrans: any = state.transitions[(state.transitions.length - 1)]
+        lastTrans["descToList"] = aTransList
+    }
+
 }
