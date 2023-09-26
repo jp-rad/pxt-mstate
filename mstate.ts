@@ -20,6 +20,7 @@ namespace mstate {
 
     const MICROBIT_CUSTOM_ID_BASE = 32768
     const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 100
+    const UPDATE_EVENT_VALUE_BASE = 0x100
     const DEFAULT_EVENT_LOOP_INTERVAL = 100
 
     /**
@@ -239,6 +240,7 @@ namespace mstate {
             // system
             _initialized: boolean
             _updateEventId: number
+            _updateEventValue: number   // non-zero values, zero is wildcard (MICROBIT_EVT_ANY).
             _eventLoopInterval: number
 
             /**
@@ -285,6 +287,7 @@ namespace mstate {
                 // system
                 this._initialized = false
                 this._updateEventId = DEFAULT_UPDATE_EVENT_ID
+                this._updateEventValue = machine + UPDATE_EVENT_VALUE_BASE
                 this._eventLoopInterval = DEFAULT_EVENT_LOOP_INTERVAL
                 this._defaultState = mname.NONE_ID
 
@@ -369,7 +372,6 @@ namespace mstate {
                         case ProcState.Start:
                             this._transitTo = this._defaultState
                             this._procNext = ProcState.Into
-                            loop = false    // break
                             break;
                         case ProcState.Into:
                             this._state = this.getStateOrNew(this._transitTo)
@@ -437,18 +439,21 @@ namespace mstate {
                     this._initialized = true
                     const that: StateMachine = this
                     // update event handler
-                    control.onEvent(this._updateEventId, this.machine, function () {
+                    control.onEvent(that._updateEventId, that._updateEventValue, function () {
                         that._update()
                     })
                     // update event loop
-                    loops.everyInterval(this._eventLoopInterval, function () {
-                        control.raiseEvent(that._updateEventId, that.machine)
+                    loops.everyInterval(that._eventLoopInterval, function () {
+                        if (ProcState.Idle != this._procNext) {
+                            control.raiseEvent(that._updateEventId, that._updateEventValue)
+                        }
                     })
                 }
                 if (ProcState.Idle == this._procNext) {
                     this._defaultState = state
                     this._procNext = ProcState.Start
-                    this._update()
+                    // update event
+                    control.raiseEvent(this._updateEventId, this._updateEventValue)
                     return true
                 } else {
                     return false
@@ -461,7 +466,7 @@ namespace mstate {
                     const triggerArgs = new TriggerWithArgs(trigger, args)
                     this._triggerQueue.push(triggerArgs)
                     // update event
-                    control.raiseEvent(this._updateEventId, this.machine)
+                    control.raiseEvent(this._updateEventId, this._updateEventValue)
                 }
             }
         }
@@ -824,7 +829,7 @@ namespace mstate {
      */
     //% block
     //% shim=mstate::simu_state_uml
-    //% deprecated=true
+    //% blockHidden=true
     export function _simuStateUml(aMachine: number, aStateName: string) {
         // for the simulator
         const pos = aStateName.indexOf(":")
@@ -843,7 +848,7 @@ namespace mstate {
      */
     //% block
     //% shim=mstate::simu_transition_uml
-    //% deprecated=true
+    //% blockHidden=true
     export function _simuTransitionUml(aMachine: number, aState: number, aTransList: string[]) {
         // for the simulator
         const state = mmachine.getStateMachine(aMachine).getStateOrNew(aState)
