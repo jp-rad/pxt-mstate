@@ -372,7 +372,6 @@ namespace mstate {
                         case ProcState.Start:
                             this._transitTo = this._defaultState
                             this._procNext = ProcState.Into
-                            loop = false    // break
                             break;
                         case ProcState.Into:
                             this._state = this.getStateOrNew(this._transitTo)
@@ -445,13 +444,16 @@ namespace mstate {
                     })
                     // update event loop
                     loops.everyInterval(that._eventLoopInterval, function () {
-                        control.raiseEvent(that._updateEventId, that._updateEventValue)
+                        if (ProcState.Idle != this._procNext) {
+                            control.raiseEvent(that._updateEventId, that._updateEventValue)
+                        }
                     })
                 }
                 if (ProcState.Idle == this._procNext) {
                     this._defaultState = state
                     this._procNext = ProcState.Start
-                    //this._update()
+                    // update event
+                    control.raiseEvent(this._updateEventId, this._updateEventValue)
                     return true
                 } else {
                     return false
