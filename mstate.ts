@@ -485,10 +485,6 @@ namespace mstate {
         }
     }
 
-    function splitFirst(s: string) {
-        return s.split(":", 1)[0]
-    }
-
     /**
      * convert state/trigger name (string) to id (number): new id if undefined
      * @param name state name (string) or trigger name (string)
@@ -499,7 +495,7 @@ namespace mstate {
     //% weight=210
     //% advanced=true
     export function convId(name: string): number {
-        return mname.getIdOrNew(name)
+        return mname.getIdOrNew(name.split(":", 1)[0])
     }
 
     /**
@@ -550,7 +546,7 @@ namespace mstate {
     export function defineState(aStateMachine: StateMachines, aStateName: string,
         body: (machine: number, state: number) => void
     ) {
-        body(aStateMachine, convId(splitFirst(aStateName)))
+        body(aStateMachine, convId(aStateName))
         // uml
         _simuStateUml(aStateMachine, aStateName)
     }
@@ -677,7 +673,7 @@ namespace mstate {
         const trigger = convId(aTriggerName)
         const toList: number[] = []
         for (const s of aTransList) {
-            toList.push(convId(splitFirst(s)))
+            toList.push(convId(s))
         }
         mmachine.getStateMachine(aMachine).getStateOrNew(aState).transitions.push(new mmachine.Transition(toList, trigger, body))
         // uml
