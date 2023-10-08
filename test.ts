@@ -65,7 +65,7 @@ mstate.defineState(StateMachines.M0, "Slow:LED blink (500ms)", function (machine
             blinkLED()
         }
     })
-    mstate.declareCustomTransition(machine, state, "", ["Fast:auto && 6times"], function (args) {
+    mstate.declareCustomTransition(machine, state, "", ["Fast:auto && 6times"], function () {
         if (0 > blinkCount) {
             mstate.transitTo(machine, 0)
         }
@@ -96,7 +96,7 @@ mstate.defineState(StateMachines.M0, "Fast:LED blink (200ms)", function (machine
             blinkLED()
         }
     })
-    mstate.declareCustomTransition(machine, state, "", ["Slow:auto && 15times"], function (args) {
+    mstate.declareCustomTransition(machine, state, "", ["Slow:auto && 15times"], function () {
         if (0 > blinkCount) {
             mstate.transitTo(machine, 0)
         }
@@ -107,13 +107,13 @@ mstate.defineState(StateMachines.M0, "Fast:LED blink (200ms)", function (machine
 })
 
 input.onButtonPressed(Button.A, function () {
-    mstate.fire(StateMachines.M0, "A", [])
+    mstate.send(StateMachines.M0, "A")
 })
 input.onButtonPressed(Button.AB, function () {
-    mstate.fire(StateMachines.M0, "A+B", [])
+    mstate.send(StateMachines.M0, "A+B")
 })
 input.onButtonPressed(Button.B, function () {
-    mstate.fire(StateMachines.M0, "B", [])
+    mstate.send(StateMachines.M0, "B")
 })
 let auto = 0
 let blinkCount = 0

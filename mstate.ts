@@ -41,7 +41,7 @@ namespace mstate {
          * array of state/trigger name, index is id.
          * default: [NONE_STR,]
          */
-        let nameList: string[] = [NONE_STR,]
+        export let nameList: string[] = [NONE_STR,]
 
         /**
          * get id, new if undefined
@@ -57,17 +57,6 @@ namespace mstate {
             return idx
         }
 
-        /**
-         * get name
-         * @param id state/trigger id
-         * @returns state/trigger name: "[<id>]" if undefined id
-         */
-        export function getName(id: number) {
-            if (0 <= id && nameList.length > id) {
-                return nameList[id]
-            }
-            return "[" + id + "]"
-        }
     }
 
     /**
@@ -117,7 +106,7 @@ namespace mstate {
             constructor(ms: number, cb: () => void) {
                 this._cb = cb
                 this._ms = ms
-                //this._nextTick = -1
+                this.nextTick = -1  // force callback
             }
 
             /**
@@ -146,17 +135,16 @@ namespace mstate {
             trigger: number
             /**
              * execute Transition.
-             * @param triggerArgs trigger args. 
              */
-            execute: (triggerArgs: number[]) => void
+            execute: () => void
 
             /**
              * constructor
              * @param toList array of state id, transition to
              * @param trigger trigger id
-             * @param cb run to code, (triggerArgs: number[]) => void
+             * @param cb run to code, () => void
              */
-            constructor(toList: number[], trigger: number, cb: (triggerArgs: number[]) => void) {
+            constructor(toList: number[], trigger: number, cb: () => void) {
                 this.toList = toList
                 this.trigger = trigger
                 this.execute = cb
@@ -269,13 +257,16 @@ namespace mstate {
             _triggerQueue: TriggerWithArgs[]
 
             // selectable taransition
-            _selectedToAt: number   // >=0: selected, TRANSITION_CANCELED: unselected
+            selectedToAt: number   // >=0: selected, = -1 (TRANSITION_CANCELED): unselected
 
             // current transition
             _transitTo: number
 
+            // current trigger args
+            triggerArgs: number[]
+
             // reset on into.
-            _timeoutMillis: number
+            timeoutMillis: number
 
             /**
              * constructor
@@ -302,8 +293,11 @@ namespace mstate {
                 // current transition
                 this._transitTo = TRANSITION_CANCELED
 
+                // current trigger args
+                this.triggerArgs = []
+
                 // selectable taransition
-                this._selectedToAt = TRANSITION_CANCELED
+                this.selectedToAt = TRANSITION_CANCELED
 
                 // proc
                 this._procNext = ProcState.Idle
@@ -329,11 +323,12 @@ namespace mstate {
             }
 
             _doCallbackSelectable(transition: Transition, triggerArgs: number[]) {
-                this._selectedToAt = TRANSITION_CANCELED    // reset
-                transition.execute(triggerArgs)             // callback
-                if (0 <= this._selectedToAt && transition.toList.length > this._selectedToAt) {
+                this.selectedToAt = TRANSITION_CANCELED    // reset
+                this.triggerArgs = triggerArgs             // current trigger args
+                transition.execute()                        // callback
+                if (0 <= this.selectedToAt && transition.toList.length > this.selectedToAt) {
                     // selected
-                    this._transitTo = transition.toList[this._selectedToAt]
+                    this._transitTo = transition.toList[this.selectedToAt]
                     return true
                 }
                 return false
@@ -375,7 +370,7 @@ namespace mstate {
                             break;
                         case ProcState.Into:
                             this._state = this.getStateOrNew(this._transitTo)
-                            this._timeoutMillis = control.millis()
+                            this.timeoutMillis = control.millis()
                             if (undefined !== this._state) {
                                 for (const v of this._state.doActivities) {
                                     v.nextTick = -1
@@ -460,11 +455,11 @@ namespace mstate {
                 }
             }
 
-            fire(trigger: number, args: number[]) {
+            send(trigger: number, args: number[]) {
                 if (ProcState.Idle != this._procNext) {
                     // queuing
-                    const triggerArgs = new TriggerWithArgs(trigger, args)
-                    this._triggerQueue.push(triggerArgs)
+                    const triggerWithArgs = new TriggerWithArgs(trigger, args)
+                    this._triggerQueue.push(triggerWithArgs)
                     // update event
                     control.raiseEvent(this._updateEventId, this._updateEventValue)
                 }
@@ -496,18 +491,6 @@ namespace mstate {
     //% advanced=true
     export function convId(name: string): number {
         return mname.getIdOrNew(name.split(":", 1)[0])
-    }
-
-    /**
-     * convert id (number) to state/trigger name (string)
-     * @param id state id or trigger id
-     * @returns state name (string) or trigger name (string): "[<id>]" if undefined
-     */
-    //% block="name of $id"
-    //% weight=200
-    //% advanced=true
-    export function convName(id: number): string {
-        return mname.getName(id)
     }
 
     /**
@@ -623,7 +606,7 @@ namespace mstate {
     //% weight=140
     //% group="Transition"
     export function declareSimpleTransition(aMachine: number, aState: number, aTriggerName: string, aToName: string) {
-        declareCustomTransition(aMachine, aState, aTriggerName, [aToName], function (args) {
+        declareCustomTransition(aMachine, aState, aTriggerName, [aToName], function () {
             mstate.transitTo(aMachine, 0)
         })
     }
@@ -644,7 +627,7 @@ namespace mstate {
     //% weight=130
     //% group="Transition"
     export function declareTimeoutedTransition(aMachine: number, aState: number, aMs: number, aToName: string) {
-        declareCustomTransition(aMachine, aState, "", [aToName], function (args) {
+        declareCustomTransition(aMachine, aState, "", [aToName], function () {
             if (mstate.isTimeouted(aMachine, aMs)) {
                 mstate.transitTo(aMachine, 0)
             }
@@ -668,7 +651,7 @@ namespace mstate {
     //% weight=120
     //% group="Transition"
     export function declareCustomTransition(aMachine: number, aState: number, aTriggerName: string, aTransList: string[],
-        body: (args: number[]) => void
+        body: () => void
     ) {
         const trigger = convId(aTriggerName)
         const toList: number[] = []
@@ -691,7 +674,21 @@ namespace mstate {
     //% weight=110
     //% group="Transition"
     export function isTimeouted(aMachine: number, aMs: number): boolean {
-        return control.millis() > mmachine.getStateMachine(aMachine)._timeoutMillis + aMs
+        return control.millis() > mmachine.getStateMachine(aMachine).timeoutMillis + aMs
+    }
+
+    /**
+     * trigger args.
+     * @param aMachine machine ID
+     * @returns trigger args
+     */
+    //% block="trigger args [$aMachine]"
+    //% aMachine.defl=0
+    //% weight=105
+    //% group="Transition"
+    //% advanced=true
+    export function getTriggerArgs(aMachine: number): number[] {
+        return mmachine.getStateMachine(aMachine).triggerArgs
     }
 
     /**
@@ -705,22 +702,37 @@ namespace mstate {
     //% weight=100
     //% group="Transition"
     export function transitTo(aMachine: number, index: number) {
-        mmachine.getStateMachine(aMachine)._selectedToAt = index
+        mmachine.getStateMachine(aMachine).selectedToAt = index
     }
 
     /**
-     * fire trigger
+     * send trigger
+     * @param aStateMachine StateMachines
+     * @param aTriggerName trigger name
+     */
+    //% block="send $aStateMachine $aTriggerName"
+    //% aStateMachine.defl=StateMachines.M0
+    //% aTriggerName.defl="e"
+    //% weight=95
+    //% group="Command"
+    export function send(aStateMachine: StateMachines, aTriggerName: string) {
+        sendWith(aStateMachine, aTriggerName, [])
+    }
+
+    /**
+     * send trigger with args
      * @param aStateMachine StateMachines
      * @param aTriggerName trigger name
      * @param aTriggerArgs args
      */
-    //% block="fire $aStateMachine $aTriggerName $aTriggerArgs"
+    //% block="send $aStateMachine $aTriggerName $aTriggerArgs"
     //% aStateMachine.defl=StateMachines.M0
     //% aTriggerName.defl="e"
     //% weight=90
     //% group="Command"
-    export function fire(aStateMachine: StateMachines, aTriggerName: string, aTriggerArgs: number[]) {
-        mmachine.getStateMachine(aStateMachine).fire(convId(aTriggerName), aTriggerArgs)
+    //% advanced=true
+    export function sendWith(aStateMachine: StateMachines, aTriggerName: string, aTriggerArgs: number[]) {
+        mmachine.getStateMachine(aStateMachine).send(convId(aTriggerName), aTriggerArgs)
     }
 
     /**
@@ -749,6 +761,7 @@ namespace mstate {
     //% weight=70
     //% group="Command"
     //% shim=mstate::simu_export_uml
+    //% advanced=true
     export function exportUml(aStateMachine: StateMachines, aStateName: string) {
         // for the simulator
         const cb = console.log
@@ -766,10 +779,10 @@ namespace mstate {
         for (const state of target._states) {
             // state
             const descStatePart = (state as any)["descState"] ? " : " + (state as any)["descState"] : ""
-            cb("state " + mstate.convName(state.state) + descStatePart)
+            cb("state " + mstate._simuConvName(state.state) + descStatePart)
             for (const trans of state.transitions) {
                 // transition
-                const trigger = mstate.convName(trans.trigger)
+                const trigger = mstate._simuConvName(trans.trigger)
                 for (const descTo of ((trans as any)["descToList"] as string[])) {
                     let arrow = true
                     let toName: string
@@ -806,9 +819,9 @@ namespace mstate {
                         triggerPart = " : " + triggerPart
                     }
                     if (arrow) {
-                        cb(mstate.convName(state.state) + " --> " + toName + triggerPart)
+                        cb(mstate._simuConvName(state.state) + " --> " + toName + triggerPart)
                     } else {
-                        cb("state " + mstate.convName(state.state) + ": --> " + toName + triggerPart)
+                        cb("state " + mstate._simuConvName(state.state) + ": --> " + toName + triggerPart)
                     }
                 }
             }
@@ -826,6 +839,7 @@ namespace mstate {
     //% block
     //% shim=mstate::simu_state_uml
     //% blockHidden=true
+    //% advanced=true
     export function _simuStateUml(aMachine: number, aStateName: string) {
         // for the simulator
         const pos = aStateName.indexOf(":")
@@ -845,11 +859,28 @@ namespace mstate {
     //% block
     //% shim=mstate::simu_transition_uml
     //% blockHidden=true
+    //% advanced=true
     export function _simuTransitionUml(aMachine: number, aState: number, aTransList: string[]) {
         // for the simulator
         const state = mmachine.getStateMachine(aMachine).getStateOrNew(aState)
         const lastTrans: any = state.transitions[(state.transitions.length - 1)]
         lastTrans["descToList"] = aTransList
+    }
+
+    /**
+     * convert id (number) to state/trigger name (string)
+     * @param id state id or trigger id
+     * @returns state name (string) or trigger name (string): "[<id>]" if undefined
+     */
+    //% block
+    //% shim=mstate::simu_conv_name
+    //% blockHidden=true
+    //% advanced=true
+    export function _simuConvName(id: number): string {
+        if (0 <= id && mname.nameList.length > id) {
+            return mname.nameList[id]
+        }
+        return "[" + id + "]"
     }
 
 }

@@ -16,6 +16,11 @@ namespace mstate {
     void simu_transition_uml(int v, int s, StringData** a) {
         // only for the simulator
     }
+    
+    //%
+    StringData* simu_conv_name(int i) {
+        // only for the simulator
+    }
 
 
 }
