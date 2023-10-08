@@ -41,7 +41,7 @@ namespace mstate {
          * array of state/trigger name, index is id.
          * default: [NONE_STR,]
          */
-        let nameList: string[] = [NONE_STR,]
+        export let nameList: string[] = [NONE_STR,]
 
         /**
          * get id, new if undefined
@@ -57,17 +57,6 @@ namespace mstate {
             return idx
         }
 
-        /**
-         * get name
-         * @param id state/trigger id
-         * @returns state/trigger name: "[<id>]" if undefined id
-         */
-        export function getName(id: number) {
-            if (0 <= id && nameList.length > id) {
-                return nameList[id]
-            }
-            return "[" + id + "]"
-        }
     }
 
     /**
@@ -505,18 +494,6 @@ namespace mstate {
     }
 
     /**
-     * convert id (number) to state/trigger name (string)
-     * @param id state id or trigger id
-     * @returns state name (string) or trigger name (string): "[<id>]" if undefined
-     */
-    //% block="name of $id"
-    //% weight=200
-    //% advanced=true
-    export function convName(id: number): string {
-        return mname.getName(id)
-    }
-
-    /**
      * Internal event settings
      * @param aStateMachine StateMachines
      * @param eventId Event ID (default: 32868 = 32768 + 100)
@@ -802,10 +779,10 @@ namespace mstate {
         for (const state of target._states) {
             // state
             const descStatePart = (state as any)["descState"] ? " : " + (state as any)["descState"] : ""
-            cb("state " + mstate.convName(state.state) + descStatePart)
+            cb("state " + mstate._simuConvName(state.state) + descStatePart)
             for (const trans of state.transitions) {
                 // transition
-                const trigger = mstate.convName(trans.trigger)
+                const trigger = mstate._simuConvName(trans.trigger)
                 for (const descTo of ((trans as any)["descToList"] as string[])) {
                     let arrow = true
                     let toName: string
@@ -842,9 +819,9 @@ namespace mstate {
                         triggerPart = " : " + triggerPart
                     }
                     if (arrow) {
-                        cb(mstate.convName(state.state) + " --> " + toName + triggerPart)
+                        cb(mstate._simuConvName(state.state) + " --> " + toName + triggerPart)
                     } else {
-                        cb("state " + mstate.convName(state.state) + ": --> " + toName + triggerPart)
+                        cb("state " + mstate._simuConvName(state.state) + ": --> " + toName + triggerPart)
                     }
                 }
             }
@@ -888,6 +865,22 @@ namespace mstate {
         const state = mmachine.getStateMachine(aMachine).getStateOrNew(aState)
         const lastTrans: any = state.transitions[(state.transitions.length - 1)]
         lastTrans["descToList"] = aTransList
+    }
+
+    /**
+     * convert id (number) to state/trigger name (string)
+     * @param id state id or trigger id
+     * @returns state name (string) or trigger name (string): "[<id>]" if undefined
+     */
+    //% block
+    //% shim=mstate::simu_conv_name
+    //% blockHidden=true
+    //% advanced=true
+    export function _simuConvName(id: number): string {
+        if (0 <= id && mname.nameList.length > id) {
+            return mname.nameList[id]
+        }
+        return "[" + id + "]"
     }
 
 }

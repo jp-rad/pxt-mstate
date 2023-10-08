@@ -1,5 +1,7 @@
 {
   "mstate": "mstate blocks\r\nDefining blocks: https://makecode.com/defining-blocks\r\nPlayground: https://makecode.com/playground\r\nicon: a Unicode identifier for an icon from the Font Awesome icon set.\r\nhttp://fontawesome.io/icons",
+  "mstate._simuConvName": "convert id (number) to state/trigger name (string)\r\r\n@returns state name (string) or trigger name (string): \"[<id>]\" if undefined",
+  "mstate._simuConvName|param|id": "state id or trigger id",
   "mstate._simuStateUml": "UML state",
   "mstate._simuStateUml|param|aMachine": "machine ID",
   "mstate._simuStateUml|param|aStateName": "state name",
@@ -9,8 +11,6 @@
   "mstate._simuTransitionUml|param|aTransList": "array of next state name",
   "mstate.convId": "convert state/trigger name (string) to id (number): new id if undefined\r\r\n@returns state id or trigger id",
   "mstate.convId|param|name": "state name (string) or trigger name (string)",
-  "mstate.convName": "convert id (number) to state/trigger name (string)\r\r\n@returns state name (string) or trigger name (string): \"[<id>]\" if undefined",
-  "mstate.convName|param|id": "state id or trigger id",
   "mstate.declareCustomTransition": "declare custom transition.",
   "mstate.declareCustomTransition|param|aMachine": "machine ID",
   "mstate.declareCustomTransition|param|aState": "state ID",

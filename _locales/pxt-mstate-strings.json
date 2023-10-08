@@ -1,8 +1,8 @@
 {
+  "mstate._simuConvName|block": "true",
   "mstate._simuStateUml|block": "true",
   "mstate._simuTransitionUml|block": "true",
   "mstate.convId|block": "id of $name",
-  "mstate.convName|block": "name of $id",
   "mstate.declareCustomTransition|block": "trasition [$aMachine,$aState] when $aTriggerName $args to $aTransList",
   "mstate.declareDo|block": "on do [$aMachine,$aState] every $aEvery ms",
   "mstate.declareEntry|block": "on entry [$aMachine,$aState]",
