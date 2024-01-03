@@ -1,9 +1,8 @@
-
 /**
  * state/trigger id:name
  */
 namespace mname {
-    /**v
+    /**
      * id:0 - INITIAL/FINAL/Completion Transition.
      */
     export const NONE_ID = 0   // id:0 - INITIAL/FINAL/Completion Transition
@@ -24,7 +23,7 @@ namespace mname {
      * @param name state name or trigger name
      * @returns state/trigger id
      */
-    export function getIdOrNew(name: string) {
+    export function getNameIdOrNew(name: string) {
         let idx = nameList.indexOf(name)
         if (0 > idx) {
             idx = nameList.length

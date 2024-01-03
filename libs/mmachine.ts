@@ -166,7 +166,8 @@ namespace mmachine {
     class StateMachine {
 
         /**
-         * machine id
+         * machine id (>0)
+         * The state machine ID is used as the event value, so it must be greater than 0
          */
         machine: number
 
@@ -270,7 +271,7 @@ namespace mmachine {
         _doCallbackSelectable(transition: Transition, triggerArgs: number[]) {
             this.selectedToAt = TRANSITION_CANCELED    // reset
             this.triggerArgs = triggerArgs             // current trigger args
-            transition.execute()                        // callback
+            transition.execute()                       // callback
             if (0 <= this.selectedToAt && transition.toList.length > this.selectedToAt) {
                 // selected
                 this._transitTo = transition.toList[this.selectedToAt]
@@ -414,7 +415,15 @@ namespace mmachine {
     // state machine
     let stateMachineList: StateMachine[] = []
 
-    export function getStateMachine(machine: StateMachines) {
+    /**
+     * get or create StateMachine
+     * @param machine machine ID (>0)
+     * @returns instance of StateMachine
+     */
+    export function getStateMachine(machine: number) {
+        if (0 >= machine) {
+            return undefined
+        }
         const obj = stateMachineList.find(item => machine == item.machine)
         if (obj) {
             return obj

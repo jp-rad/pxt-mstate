@@ -12,7 +12,7 @@
         "shims.d.ts",
         "mstate.cpp",
         "mstate.ts",
-        "libs/mmachines.ts",
+        "libs/mmachine.ts",
         "libs/mname.ts"
     ],
     "testFiles": [
