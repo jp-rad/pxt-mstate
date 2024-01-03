@@ -1,6 +1,5 @@
 enum StateMachines {
-    M0 = 1,
-    M1,
+    M1 = 1,
     M2,
     M3,
     M4,
@@ -68,7 +67,7 @@ namespace mstate {
      * @param ms Event loop interval (default: 100ms)
      */
     //% block="settings $aStateMachine event ID: $eventId every: $ms ms"
-    //% aStateMachine.defl=StateMachines.M0
+    //% aStateMachine.defl=StateMachines.M1
     //% eventId.defl=32768
     //% ms.shadow="timePicker"
     //% ms.defl=100
@@ -91,7 +90,7 @@ namespace mstate {
      * @param body code to run, (mstateId: machine-state ID)
      */
     //% block="define $aStateMachine $mstateId to $aStateName"
-    //% aStateMachine.defl=StateMachines.M0
+    //% aStateMachine.defl=StateMachines.M1
     //% aStateName.defl="a"
     //% draggableParameters="reporter"
     //% weight=180
@@ -311,7 +310,7 @@ namespace mstate {
      * @param aTriggerName trigger name
      */
     //% block="send $aStateMachine $aTriggerName"
-    //% aStateMachine.defl=StateMachines.M0
+    //% aStateMachine.defl=StateMachines.M1
     //% aTriggerName.defl="e"
     //% weight=95
     //% group="Command"
@@ -326,7 +325,7 @@ namespace mstate {
      * @param aTriggerArgs args
      */
     //% block="send $aStateMachine $aTriggerName $aTriggerArgs"
-    //% aStateMachine.defl=StateMachines.M0
+    //% aStateMachine.defl=StateMachines.M1
     //% aTriggerName.defl="e"
     //% weight=90
     //% group="Command"
@@ -343,7 +342,7 @@ namespace mstate {
      * @param aStateName default state name
      */
     //% block="start $aStateMachine $aStateName"
-    //% aStateMachine.defl=StateMachines.M0
+    //% aStateMachine.defl=StateMachines.M1
     //% aStateName.defl="a"
     //% weight=80
     //% group="Command"

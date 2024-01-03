@@ -15,7 +15,7 @@ function blinkLED () {
 // entry/
 // - Initialize On/Blink
 // - LED Heart
-mstate.defineState(StateMachines.M0, "On", function (mstateId) {
+mstate.defineState(StateMachines.M1, "On", function (mstateId) {
     mstate.descriptionsUml(["auto=OFF", "Heart icon"])
     mstate.declareEntry(mstateId, function () {
         auto = 0
@@ -36,7 +36,7 @@ mstate.defineState(StateMachines.M0, "On", function (mstateId) {
 // State Off
 // entry/
 // - LED off
-mstate.defineState(StateMachines.M0, "Off", function (mstateId) {
+mstate.defineState(StateMachines.M1, "Off", function (mstateId) {
     mstate.descriptionUml("LED off")
     mstate.declareEntry(mstateId, function () {
         basic.clearScreen()
@@ -48,13 +48,13 @@ mstate.defineState(StateMachines.M0, "Off", function (mstateId) {
     mstate.declareSimpleTransition(mstateId, "A", "On")
 })
 input.onButtonPressed(Button.A, function () {
-    mstate.send(StateMachines.M0, "A")
+    mstate.send(StateMachines.M1, "A")
 })
 input.onButtonPressed(Button.AB, function () {
-    mstate.send(StateMachines.M0, "A+B")
+    mstate.send(StateMachines.M1, "A+B")
 })
 input.onButtonPressed(Button.B, function () {
-    mstate.send(StateMachines.M0, "B")
+    mstate.send(StateMachines.M1, "B")
 })
 // State Slow
 // entry/
@@ -62,7 +62,7 @@ input.onButtonPressed(Button.B, function () {
 // do/ (500ms)
 // - LED blink
 // [Auto Mode] 6times
-mstate.defineState(StateMachines.M0, "Slow", function (mstateId) {
+mstate.defineState(StateMachines.M1, "Slow", function (mstateId) {
     mstate.declareEntry(mstateId, function () {
         blinkCount = 0
     })
@@ -96,7 +96,7 @@ mstate.defineState(StateMachines.M0, "Slow", function (mstateId) {
 // do/ (200ms)
 // - LED blink
 // [Auto Mode] 15times
-mstate.defineState(StateMachines.M0, "Fast", function (mstateId) {
+mstate.defineState(StateMachines.M1, "Fast", function (mstateId) {
     mstate.declareEntry(mstateId, function () {
         blinkCount = 0
     })
@@ -124,5 +124,5 @@ mstate.defineState(StateMachines.M0, "Fast", function (mstateId) {
 let blinkCount = 0
 let auto = 0
 let blinkNext = 0
-mstate.start(StateMachines.M0, "Off")
-mstate.exportUml(StateMachines.M0, "Off")
+mstate.start(StateMachines.M1, "Off")
+mstate.exportUml(StateMachines.M1, "Off")

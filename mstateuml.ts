@@ -7,7 +7,7 @@ namespace mstate {
      * @param aStateName default state
      */
     //% block="UML $aStateMachine $aStateName"
-    //% aStateMachine.defl=StateMachines.M0
+    //% aStateMachine.defl=StateMachines.M1
     //% aStateName.defl="a"
     //% weight=70
     //% group="Command"
