@@ -12,6 +12,7 @@
         "shims.d.ts",
         "mstate.cpp",
         "mstate.ts",
+        "mstateuml.ts",
         "libs/mmachine.ts",
         "libs/mname.ts"
     ],
