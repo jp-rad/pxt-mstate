@@ -11,7 +11,9 @@
         "enums.d.ts",
         "shims.d.ts",
         "mstate.cpp",
-        "mstate.ts"
+        "mstate.ts",
+        "libs/mmachines.ts",
+        "libs/mname.ts"
     ],
     "testFiles": [
         "test.ts"
