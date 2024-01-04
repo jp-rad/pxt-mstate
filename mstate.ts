@@ -76,11 +76,7 @@ namespace mstate {
     export function settingsMachineEvent(aStateMachine: StateMachines,
         eventId: number, ms: number
     ) {
-        const machine = mmachine.getStateMachine(aStateMachine)
-        if (!machine._initialized) {
-            machine._updateEventId = eventId
-            machine._eventLoopInterval = ms
-        }
+        mcontroller.getStateMachineController(aStateMachine).settings(eventId, ms)
     }
 
     /**
@@ -119,7 +115,7 @@ namespace mstate {
         if (0 > machine) {
             return
         }
-        mmachine.getStateMachine(machine).getStateOrNew(state).entryActions.push(new mmachine.EntryExitAction(body))
+        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).entryActions.push(new mmachine.EntryExitAction(body))
         // uml
         _simuStateUml(machine, state)
     }
@@ -143,7 +139,7 @@ namespace mstate {
         if (0 > machine) {
             return
         }
-        mmachine.getStateMachine(machine).getStateOrNew(state).doActivities.push(new mmachine.DoActivity(aEvery, body))
+        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).doActivities.push(new mmachine.DoActivity(aEvery, body))
         // uml
         _simuStateUml(machine, state)
     }
@@ -165,7 +161,7 @@ namespace mstate {
         if (0 > machine) {
             return
         }
-        mmachine.getStateMachine(machine).getStateOrNew(state).exitActions.push(new mmachine.EntryExitAction(body))
+        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).exitActions.push(new mmachine.EntryExitAction(body))
         // uml
         _simuStateUml(machine, state)
     }
@@ -240,7 +236,7 @@ namespace mstate {
         if (0 > machine) {
             return
         }
-        mmachine.getStateMachine(machine).getStateOrNew(state).transitions.push(new mmachine.Transition(toList, trigger, body))
+        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).transitions.push(new mmachine.Transition(toList, trigger, body))
         // uml
         _simuTransitionUml(machine, state, aTransList)
     }
@@ -262,7 +258,7 @@ namespace mstate {
         if (0 > machine) {
             return false
         }
-        return control.millis() > mmachine.getStateMachine(machine).timeoutMillis + aMs
+        return control.millis() > mcontroller.getStateMachineController(machine).stateMachine.timeoutMillis + aMs
     }
 
     /**
@@ -281,7 +277,7 @@ namespace mstate {
         if (0 > machine) {
             return []
         }
-        return mmachine.getStateMachine(machine).triggerArgs
+        return mcontroller.getStateMachineController(machine).stateMachine.triggerArgs
     }
 
     /**
@@ -301,7 +297,7 @@ namespace mstate {
         if (0 > machine) {
             return
         }
-        mmachine.getStateMachine(machine).selectedToAt = index
+        mcontroller.getStateMachineController(machine).stateMachine.selectedToAt = index
     }
 
     /**
@@ -333,7 +329,7 @@ namespace mstate {
     export function sendWith(aStateMachine: StateMachines, aTriggerName: string,
         aTriggerArgs: number[]
     ) {
-        mmachine.getStateMachine(aStateMachine).send(convId(aTriggerName), aTriggerArgs)
+        mcontroller.getStateMachineController(aStateMachine).send(convId(aTriggerName), aTriggerArgs)
     }
 
     /**
@@ -348,7 +344,7 @@ namespace mstate {
     //% group="Command"
     export function start(aStateMachine: StateMachines, aStateName: string
     ) {
-        mmachine.getStateMachine(aStateMachine).start(convId(aStateName))
+        mcontroller.getStateMachineController(aStateMachine).start(convId(aStateName))
     }
 
 }

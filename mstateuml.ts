@@ -29,7 +29,7 @@ namespace mstate {
         cb("[*] --> " + aStateName)
 
         // target machine
-        const target = mmachine.getStateMachine(aStateMachine)
+        const target = mcontroller.getStateMachineController(aStateMachine).stateMachine
         for (const state of target._states) {
             // state
             const descStatePart = (state as any)["descState"]
@@ -149,7 +149,7 @@ namespace mstate {
     export function _simuStateUml(aMachine: number, aState: number
     ) {
         // for the simulator
-        const state: any = mmachine.getStateMachine(aMachine).getStateOrNew(aState)
+        const state: any = mcontroller.getStateMachineController(aMachine).stateMachine.getStateOrNew(aState)
         const descList = _simuLastDescriptionListUML()
         if (0 < descList.length) {
             state["descState"] = (
@@ -170,7 +170,7 @@ namespace mstate {
     //% advanced=true
     export function _simuTransitionUml(aMachine: number, aState: number, aTransList: string[]) {
         // for the simulator
-        const state = mmachine.getStateMachine(aMachine).getStateOrNew(aState)
+        const state = mcontroller.getStateMachineController(aMachine).stateMachine.getStateOrNew(aState)
         const lastTrans: any = state.transitions[(state.transitions.length - 1)]
         lastTrans["transList"] = aTransList
         lastTrans["descTransList"] = _simuLastDescriptionListUML()

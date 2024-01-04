@@ -1,13 +1,9 @@
-
-const MICROBIT_CUSTOM_ID_BASE = 32768
-const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 100
-const UPDATE_EVENT_VALUE_BASE = 0x100
-const DEFAULT_EVENT_LOOP_INTERVAL = 100
-
 /**
  * state machine
  */
 namespace mmachine {
+
+    export type IdleUpdateCallback = () => void 
 
     /**
      * transition canceled
@@ -163,7 +159,7 @@ namespace mmachine {
         Exit
     }
 
-    class StateMachine {
+    export class StateMachine {
 
         /**
          * machine id (>0)
@@ -171,11 +167,10 @@ namespace mmachine {
          */
         machine: number
 
-        // system
-        _initialized: boolean
-        _updateEventId: number
-        _updateEventValue: number   // non-zero values, zero is wildcard (MICROBIT_EVT_ANY).
-        _eventLoopInterval: number
+        /**
+         * idle update callback.
+         */
+        _idleUpdateCallback: IdleUpdateCallback
 
         /**
          * next proc
@@ -218,14 +213,11 @@ namespace mmachine {
          * constructor
          * The state machine ID is used as the event value, so it must be greater than 0
          * @param machine state machine ID (>0)
+         * @param sendMessage callback
          */
-        constructor(machine: number) {
+        constructor(machine: number, cb: IdleUpdateCallback) {
             this.machine = machine
-            // system
-            this._initialized = false
-            this._updateEventId = DEFAULT_UPDATE_EVENT_ID
-            this._updateEventValue = machine + UPDATE_EVENT_VALUE_BASE
-            this._eventLoopInterval = DEFAULT_EVENT_LOOP_INTERVAL
+            this._idleUpdateCallback = cb
             this._defaultState = mname.NONE_ID
 
             this._states = []
@@ -306,7 +298,7 @@ namespace mmachine {
             return false
         }
 
-        _update() {
+        update() {
             let loop = true
             do {
                 switch (this._procNext) {
@@ -376,25 +368,10 @@ namespace mmachine {
         }
 
         start(state: number): boolean {
-            if (!this._initialized) {
-                this._initialized = true
-                const that: StateMachine = this
-                // update event handler
-                control.onEvent(that._updateEventId, that._updateEventValue, function () {
-                    that._update()
-                })
-                // update event loop
-                loops.everyInterval(that._eventLoopInterval, function () {
-                    if (ProcState.Idle != this._procNext) {
-                        control.raiseEvent(that._updateEventId, that._updateEventValue)
-                    }
-                })
-            }
             if (ProcState.Idle == this._procNext) {
                 this._defaultState = state
                 this._procNext = ProcState.Start
-                // update event
-                control.raiseEvent(this._updateEventId, this._updateEventValue)
+                this._idleUpdateCallback()
                 return true
             } else {
                 return false
@@ -406,30 +383,9 @@ namespace mmachine {
                 // queuing
                 const triggerWithArgs = new TriggerWithArgs(trigger, args)
                 this._triggerQueue.push(triggerWithArgs)
-                // update event
-                control.raiseEvent(this._updateEventId, this._updateEventValue)
+                this._idleUpdateCallback()
             }
         }
     }
 
-    // state machine
-    let stateMachineList: StateMachine[] = []
-
-    /**
-     * get or create StateMachine
-     * @param machine machine ID (>0)
-     * @returns instance of StateMachine
-     */
-    export function getStateMachine(machine: number) {
-        if (0 >= machine) {
-            return undefined
-        }
-        const obj = stateMachineList.find(item => machine == item.machine)
-        if (obj) {
-            return obj
-        }
-        const newObj = new StateMachine(machine)
-        stateMachineList.push(newObj)
-        return newObj
-    }
 }
