@@ -7,32 +7,39 @@ namespace mcontroller {
     const UPDATE_EVENT_VALUE_BASE = 0x100
     const DEFAULT_EVENT_LOOP_INTERVAL = 100
 
-    export class Controller {
+    export class StateMachineController {
 
-        // system
+        // micro:bit events/loops
         _initialized: boolean
         _updateEventId: number
         _updateEventValue: number   // non-zero values, zero is wildcard (MICROBIT_EVT_ANY).
         _eventLoopInterval: number
 
+        /**
+         * state machine
+         */
         stateMachine: mmachine.StateMachine
 
         /**
          * constructor
-         * The state machine ID is used as the event value, so it must be greater than 0
-         * @param machine state machine ID (>0)
+         * @param machineId state machine ID
          */
-        constructor(machine: number) {
-            // system
+        constructor(machineId: number) {
+            // micro:bit events/loops
             this._initialized = false
             this._updateEventId = DEFAULT_UPDATE_EVENT_ID
-            this._updateEventValue = machine + UPDATE_EVENT_VALUE_BASE
+            this._updateEventValue = machineId + UPDATE_EVENT_VALUE_BASE
             this._eventLoopInterval = DEFAULT_EVENT_LOOP_INTERVAL
-            const that: Controller = this
-            this.stateMachine = new mmachine.StateMachine(machine, () => {
-                // update event
-                control.raiseEvent(that._updateEventId, that._updateEventValue)
+            // StateMachine
+            const that: StateMachineController = this
+            this.stateMachine = new mmachine.StateMachine(machineId, () => {
+                that.idleUpdate()
             })
+        }
+
+        idleUpdate(): void {
+            // update event
+            control.raiseEvent(this._updateEventId, this._updateEventValue)
         }
 
         settings(eventId: number, ms: number) {
@@ -42,44 +49,44 @@ namespace mcontroller {
             }
         }
 
-        start(state: number): boolean {
+        start(stateId: number): boolean {
             if (!this._initialized) {
                 this._initialized = true
-                const that: Controller = this
+                const that: StateMachineController = this
                 // update event handler
                 control.onEvent(that._updateEventId, that._updateEventValue, function () {
                     that.stateMachine.update()
                 })
                 // update event loop
                 loops.everyInterval(that._eventLoopInterval, function () {
-                    control.raiseEvent(that._updateEventId, that._updateEventValue)
+                    that.idleUpdate()
                 })
             }
-            return this.stateMachine.start(state)
+            return this.stateMachine.start(stateId)
         }
 
-        send(trigger: number, args: number[]) {
-            this.stateMachine.send(trigger, args)
+        send(triggerId: number, triggerArgs: number[]) {
+            this.stateMachine.send(triggerId, triggerArgs)
         }
     }
 
     // state machine
-    let stateMachineControllerList: Controller[] = []
+    let stateMachineControllerList: StateMachineController[] = []
 
     /**
      * get or create StateMachine controller
-     * @param machine machine ID (>0)
+     * @param machineId machine ID
      * @returns instance of StateMachine controller
      */
-    export function getStateMachineController(machine: number) {
-        if (0 >= machine) {
+    export function getStateMachineController(machineId: number) {
+        if (0 >= machineId) {
             return undefined
         }
-        const obj = stateMachineControllerList.find(item => machine == item.stateMachine.machine)
+        const obj = stateMachineControllerList.find(item => machineId == item.stateMachine.machineId)
         if (obj) {
             return obj
         }
-        const newObj = new Controller(machine)
+        const newObj = new StateMachineController(machineId)
         stateMachineControllerList.push(newObj)
         return newObj
     }

@@ -1,5 +1,6 @@
 enum StateMachines {
-    M1 = 1,
+    M0 = 0,
+    M1,
     M2,
     M3,
     M4,
@@ -212,7 +213,7 @@ namespace mstate {
     export function isTimeouted(aStateMachine: StateMachines,
         aMs: number
     ): boolean {
-        return control.millis() > mcontroller.getStateMachineController(aStateMachine).stateMachine.timeoutMillis + aMs
+        return control.millis() > mcontroller.getStateMachineController(aStateMachine).stateMachine.tickOnInto + aMs
     }
 
     /**

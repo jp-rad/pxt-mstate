@@ -35,14 +35,14 @@ namespace mstate {
             const descStatePart = (state as any)["descState"]
                 ? " : " + ((state as any)["descState"] as string[]).join("\\n")
                 : ""
-            cb("state " + mstate._simuConvName(state.state) + descStatePart)
+            cb("state " + mstate._simuConvName(state.stateId) + descStatePart)
             for (const trans of state.transitions) {
                 // transition
                 const transList: string[] = (trans as any)["transList"]
                     ? (trans as any)["transList"] : []
                 const descTransList: string[] = (trans as any)["descTransList"]
                     ? (trans as any)["descTransList"] : []
-                const trigger = mstate._simuConvName(trans.trigger)
+                const trigger = mstate._simuConvName(trans.triggerId)
                 transList.forEach((toName, index) => {
                     if (toName == "") {
                         toName = "[*]"
@@ -70,9 +70,9 @@ namespace mstate {
                         triggerPart = " : " + triggerPart
                     }
                     if (arrow) {
-                        cb(mstate._simuConvName(state.state) + " --> " + toName + triggerPart)
+                        cb(mstate._simuConvName(state.stateId) + " --> " + toName + triggerPart)
                     } else {
-                        cb("state " + mstate._simuConvName(state.state) + ": --> " + toName + triggerPart)
+                        cb("state " + mstate._simuConvName(state.stateId) + ": --> " + toName + triggerPart)
                     }
                 })  // transList.forEach
             }
