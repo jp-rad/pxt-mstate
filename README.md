@@ -43,7 +43,7 @@ function blinkLED () {
     blink += 1
     blink = blink % 2
 }
-mstate.defineState(StateMachines.M0, "State1", function (machine, state) {
+mstate.defineState(StateMachines.M1, "State1", function (machine, state) {
     mstate.declareEntry(machine, state, function () {
         blink = 0
         basic.showIcon(IconNames.Heart)
@@ -58,13 +58,13 @@ mstate.defineState(StateMachines.M0, "State1", function (machine, state) {
     mstate.declareSimpleTransition(machine, state, "Trigger1", "")
 })
 input.onButtonPressed(Button.A, function () {
-    mstate.start(StateMachines.M0, "State1")
+    mstate.start(StateMachines.M1, "State1")
 })
 input.onButtonPressed(Button.B, function () {
-    mstate.fire(StateMachines.M0, "Trigger1", [])
+    mstate.send(StateMachines.M1, "Trigger1")
 })
 let blink = 0
-mstate.exportUml(StateMachines.M0, "State1")
+mstate.exportUml(StateMachines.M1, "State1")
 
 ```
 

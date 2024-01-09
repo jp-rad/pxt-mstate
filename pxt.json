@@ -11,7 +11,11 @@
         "enums.d.ts",
         "shims.d.ts",
         "mstate.cpp",
-        "mstate.ts"
+        "mstate.ts",
+        "mstateuml.ts",
+        "libs/mcontroller.ts",
+        "libs/mmachine.ts",
+        "libs/mname.ts"
     ],
     "testFiles": [
         "test.ts"
