@@ -2,7 +2,7 @@
  * tests go here; this will not be compiled when this package is used as an extension.
  */
 // blink
-function blinkLED () {
+function blinkLED() {
     if (0 == blinkNext) {
         blinkNext = 1
         led.setBrightness(100)
@@ -15,20 +15,20 @@ function blinkLED () {
 // entry/
 // - Initialize On/Blink
 // - LED Heart
-mstate.defineState(StateMachines.M1, "On", function (mstateId) {
+mstate.defineState(StateMachines.M1, "On", function () {
     mstate.descriptionsUml(["auto=OFF", "Heart icon"])
-    mstate.declareEntry(mstateId, function () {
+    mstate.declareEntry(function () {
         auto = 0
         led.setBrightness(255)
         blinkNext = 0
         basic.showIcon(IconNames.Heart)
     })
-    mstate.declareSimpleTransition(mstateId, "A", "Slow")
+    mstate.declareSimpleTransition("A", "Slow")
     mstate.descriptionUml(":")
-    mstate.declareSimpleTransition(mstateId, "B", "Off")
+    mstate.declareSimpleTransition("B", "Off")
     mstate.descriptionUml("/auto=ON")
-    mstate.declareCustomTransition(mstateId, "A+B", ["Slow"], function () {
-        mstate.transitTo(mstateId, 0)
+    mstate.declareCustomTransition("A+B", ["Slow"], function () {
+        mstate.transitTo(StateMachines.M1, 0)
         // effect
         auto = 1
     })
@@ -36,16 +36,16 @@ mstate.defineState(StateMachines.M1, "On", function (mstateId) {
 // State Off
 // entry/
 // - LED off
-mstate.defineState(StateMachines.M1, "Off", function (mstateId) {
+mstate.defineState(StateMachines.M1, "Off", function () {
     mstate.descriptionUml("LED off")
-    mstate.declareEntry(mstateId, function () {
+    mstate.declareEntry(function () {
         basic.clearScreen()
     })
-    mstate.declareExit(mstateId, function () {
+    mstate.declareExit(function () {
         led.setBrightness(255)
         basic.showString("On!")
     })
-    mstate.declareSimpleTransition(mstateId, "A", "On")
+    mstate.declareSimpleTransition("A", "On")
 })
 input.onButtonPressed(Button.A, function () {
     mstate.send(StateMachines.M1, "A")
@@ -62,12 +62,12 @@ input.onButtonPressed(Button.B, function () {
 // do/ (500ms)
 // - LED blink
 // [Auto Mode] 6times
-mstate.defineState(StateMachines.M1, "Slow", function (mstateId) {
-    mstate.declareEntry(mstateId, function () {
+mstate.defineState(StateMachines.M1, "Slow", function () {
+    mstate.declareEntry(function () {
         blinkCount = 0
     })
     mstate.descriptionUml("LED blink (500ms)")
-    mstate.declareDo(mstateId, 500, function () {
+    mstate.declareDo(500, function () {
         blinkCount += 1
         if (1 == auto && 6 < blinkCount) {
             blinkCount = -1
@@ -76,19 +76,19 @@ mstate.defineState(StateMachines.M1, "Slow", function (mstateId) {
         }
     })
     mstate.descriptionUml("auto && 6times")
-    mstate.declareCustomTransition(mstateId, "", ["Fast"], function () {
+    mstate.declareCustomTransition("", ["Fast"], function () {
         if (0 > blinkCount) {
-            mstate.transitTo(mstateId, 0)
+            mstate.transitTo(StateMachines.M1, 0)
         }
     })
     mstate.descriptionUml("/auto=OFF")
-    mstate.declareCustomTransition(mstateId, "A", ["Fast"], function () {
-        mstate.transitTo(mstateId, 0)
+    mstate.declareCustomTransition("A", ["Fast"], function () {
+        mstate.transitTo(StateMachines.M1, 0)
         // effect
         auto = 0
     })
     mstate.descriptionUml(":")
-    mstate.declareSimpleTransition(mstateId, "B", "Off")
+    mstate.declareSimpleTransition("B", "Off")
 })
 // State Fast
 // entry/
@@ -96,12 +96,12 @@ mstate.defineState(StateMachines.M1, "Slow", function (mstateId) {
 // do/ (200ms)
 // - LED blink
 // [Auto Mode] 15times
-mstate.defineState(StateMachines.M1, "Fast", function (mstateId) {
-    mstate.declareEntry(mstateId, function () {
+mstate.defineState(StateMachines.M1, "Fast", function () {
+    mstate.declareEntry(function () {
         blinkCount = 0
     })
     mstate.descriptionUml("LED blink (200ms)")
-    mstate.declareDo(mstateId, 200, function () {
+    mstate.declareDo(200, function () {
         blinkCount += 1
         if (1 == auto && 15 < blinkCount) {
             blinkCount = -1
@@ -110,16 +110,16 @@ mstate.defineState(StateMachines.M1, "Fast", function (mstateId) {
         }
     })
     mstate.descriptionUml("auto && 15times")
-    mstate.declareCustomTransition(mstateId, "", ["Slow"], function () {
+    mstate.declareCustomTransition("", ["Slow"], function () {
         if (0 > blinkCount) {
-            mstate.transitTo(mstateId, 0)
+            mstate.transitTo(StateMachines.M1, 0)
         }
     })
-    mstate.declareSimpleTransition(mstateId, "A", "On")
+    mstate.declareSimpleTransition("A", "On")
     mstate.descriptionUml(":")
-    mstate.declareSimpleTransition(mstateId, "B", "Off")
+    mstate.declareSimpleTransition("B", "Off")
     mstate.descriptionUml(">5s")
-    mstate.declareTimeoutedTransition(mstateId, 5000, "On")
+    mstate.declareTimeoutedTransition(5000, "On")
 })
 let blinkCount = 0
 let auto = 0
