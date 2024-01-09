@@ -103,7 +103,7 @@ namespace mmachine {
         }
     }
 
-    class State {
+    export class State {
         /**
          * state id.
          */

@@ -29,7 +29,7 @@ namespace mstate {
         cb("[*] --> " + aStateName)
 
         // target machine
-        const target = mcontroller.getStateMachineController(aStateMachine).stateMachine
+        const target = mcontroller.getStateMachine(aStateMachine)
         for (const state of target._states) {
             // state
             const descStatePart = (state as any)["descState"]
@@ -139,17 +139,17 @@ namespace mstate {
 
     /**
      * UML state
-     * @param aMachine  machine ID
-     * @param aStateName state name
+     * @param machineId  machine ID
+     * @param stateId state name
      */
     //% block
     //% shim=mstate::dummy_number_number
     //% blockHidden=true
     //% advanced=true
-    export function _simuStateUml(aMachine: number, aState: number
+    export function _simuStateUml(machineId: number, stateId: number
     ) {
         // for the simulator
-        const state: any = mcontroller.getStateMachineController(aMachine).stateMachine.getStateOrNew(aState)
+        const state: any = mcontroller.getState(machineId, stateId)
         const descList = _simuLastDescriptionListUML()
         if (0 < descList.length) {
             state["descState"] = (
@@ -160,17 +160,17 @@ namespace mstate {
 
     /**
      * UML transition
-     * @param aMachine machine ID
-     * @param aState state ID
+     * @param machineId machine ID
+     * @param stateId state ID
      * @param aTransList array of next state name
      */
     //% block
     //% shim=mstate::dummy_number_number_strings
     //% blockHidden=true
     //% advanced=true
-    export function _simuTransitionUml(aMachine: number, aState: number, aTransList: string[]) {
+    export function _simuTransitionUml(machineId: number, stateId: number, aTransList: string[]) {
         // for the simulator
-        const state = mcontroller.getStateMachineController(aMachine).stateMachine.getStateOrNew(aState)
+        const state = mcontroller.getState(machineId, stateId)
         const lastTrans: any = state.transitions[(state.transitions.length - 1)]
         lastTrans["transList"] = aTransList
         lastTrans["descTransList"] = _simuLastDescriptionListUML()
@@ -178,19 +178,19 @@ namespace mstate {
 
     /**
      * convert id (number) to state/trigger name (string)
-     * @param id state id or trigger id
+     * @param nameId state id or trigger id
      * @returns state name (string) or trigger name (string): "[<id>]" if undefined
      */
     //% block
     //% shim=mstate::dummy_number_ret_string
     //% blockHidden=true
     //% advanced=true
-    export function _simuConvName(id: number
+    export function _simuConvName(nameId: number
     ): string {
-        if (0 <= id && mname.nameList.length > id) {
-            return mname.nameList[id]
+        if (0 <= nameId && mname.nameList.length > nameId) {
+            return mname.nameList[nameId]
         }
-        return "[" + id + "]"
+        return "[" + nameId + "]"
     }
 
 }

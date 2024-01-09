@@ -2,92 +2,82 @@
  * controller
  */
 namespace mcontroller {
+
     const MICROBIT_CUSTOM_ID_BASE = 32768
-    const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 100
+    const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 0x100
     const UPDATE_EVENT_VALUE_BASE = 0x100
-    const DEFAULT_EVENT_LOOP_INTERVAL = 100
+    const DEFAULT_UPDATE_LOOP_INTERVAL = 100
 
-    export class StateMachineController {
+    let _defineMachineId: StateMachines = undefined
+    let _defineStateId: number = undefined
 
-        // micro:bit events/loops
-        _initialized: boolean
-        _updateEventId: number
-        _updateEventValue: number   // non-zero values, zero is wildcard (MICROBIT_EVT_ANY).
-        _eventLoopInterval: number
+    export function defineState(machineId: number, stateId: number, body: () => void) {
+        
+        _defineMachineId = machineId
+        _defineStateId = stateId
+        body()
+        _defineMachineId = undefined
+        _defineStateId = undefined
+    }
 
-        /**
-         * state machine
-         */
-        stateMachine: mmachine.StateMachine
-
-        /**
-         * constructor
-         * @param machineId state machine ID
-         */
-        constructor(machineId: number) {
-            // micro:bit events/loops
-            this._initialized = false
-            this._updateEventId = DEFAULT_UPDATE_EVENT_ID
-            this._updateEventValue = machineId + UPDATE_EVENT_VALUE_BASE
-            this._eventLoopInterval = DEFAULT_EVENT_LOOP_INTERVAL
-            // StateMachine
-            const that: StateMachineController = this
-            this.stateMachine = new mmachine.StateMachine(machineId, () => {
-                that.idleUpdate()
-            })
-        }
-
-        idleUpdate(): void {
-            // update event
-            control.raiseEvent(this._updateEventId, this._updateEventValue)
-        }
-
-        settings(eventId: number, ms: number) {
-            if (!this._initialized) {
-                this._updateEventId = eventId
-                this._eventLoopInterval = ms
-            }
-        }
-
-        start(stateId: number): boolean {
-            if (!this._initialized) {
-                this._initialized = true
-                const that: StateMachineController = this
-                // update event handler
-                control.onEvent(that._updateEventId, that._updateEventValue, function () {
-                    that.stateMachine.update()
-                })
-                // update event loop
-                loops.everyInterval(that._eventLoopInterval, function () {
-                    that.idleUpdate()
-                })
-            }
-            return this.stateMachine.start(stateId)
-        }
-
-        send(triggerId: number, triggerArgs: number[]) {
-            this.stateMachine.send(triggerId, triggerArgs)
-        }
+    export function getDefineState() {
+        return [_defineMachineId, _defineStateId]
     }
 
     // state machine
-    let stateMachineControllerList: StateMachineController[] = []
+    let stateMachineList: mmachine.StateMachine[] = []
+
+    // update event/loop
+    let _initialized: boolean = false
+    let _updateEventId: number = DEFAULT_UPDATE_EVENT_ID
+    let _updateLoopInterval: number = DEFAULT_UPDATE_LOOP_INTERVAL
+
+    export function initialize(): void {
+        if (!_initialized) {
+            _initialized = true
+            // update event handler
+            control.onEvent(_updateEventId, 0, function () {
+                const machineId = control.eventValue()
+                getStateMachine(machineId).update()
+            })
+            // update event loop
+            loops.everyInterval(_updateLoopInterval, function () {
+                for (const stateMachine of stateMachineList) {
+                    _idleUpdate(stateMachine.machineId)
+                }
+            })
+        }
+    }
+
+    function _idleUpdate(machineId: number) {
+        control.raiseEvent(_updateEventId, machineId)
+    }
+
+    export function settings(eventId: number, ms: number) {
+        if (!_initialized) {
+            _updateEventId = eventId
+            _updateLoopInterval = ms
+        }
+    }
 
     /**
-     * get or create StateMachine controller
+     * get or create StateMachine
      * @param machineId machine ID
-     * @returns instance of StateMachine controller
+     * @returns instance of StateMachine
      */
-    export function getStateMachineController(machineId: number) {
-        if (0 >= machineId) {
-            return undefined
-        }
-        const obj = stateMachineControllerList.find(item => machineId == item.stateMachine.machineId)
+    export function getStateMachine(machineId: number) {
+        const obj = stateMachineList.find(item => machineId == item.machineId)
         if (obj) {
             return obj
         }
-        const newObj = new StateMachineController(machineId)
-        stateMachineControllerList.push(newObj)
+        const newObj = new mmachine.StateMachine(machineId, function () {
+            _idleUpdate(machineId)
+        })
+        stateMachineList.push(newObj)
         return newObj
+    }
+    
+    export function getState(machineId: number, stateId: number): mmachine.State {
+        return getStateMachine(machineId).getStateOrNew(stateId)
     }
 }

@@ -48,13 +48,13 @@ mstate.defineState(StateMachines.M1, "Off", function () {
     mstate.declareSimpleTransition("A", "On")
 })
 input.onButtonPressed(Button.A, function () {
-    mstate.send(StateMachines.M1, "A")
+    mstate.sendTrigger(StateMachines.M1, "A")
 })
 input.onButtonPressed(Button.AB, function () {
-    mstate.send(StateMachines.M1, "A+B")
+    mstate.sendTrigger(StateMachines.M1, "A+B")
 })
 input.onButtonPressed(Button.B, function () {
-    mstate.send(StateMachines.M1, "B")
+    mstate.sendTrigger(StateMachines.M1, "B")
 })
 // State Slow
 // entry/

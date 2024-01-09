@@ -18,23 +18,12 @@ enum StateMachines {
 //% groups="['Command', 'Declare', 'Transit']"
 namespace mstate {
 
-    let _currentStateMachines: StateMachines
-    let _currentStateId: number
-
-    function getCurrentStateId() {
-        return [_currentStateMachines, _currentStateId]
-    }
-
     /**
      * convert state/trigger name (string) to id (number): new id if undefined
      * @param name state name (string) or trigger name (string)
      * @returns state id or trigger id
      */
-    //% block="id of $name"
-    //% name.defl="a"
-    //% weight=210
-    //% advanced=true
-    export function convId(name: string
+    function convNameId(name: string
     ): number {
         return mname.getNameIdOrNew(name)
     }
@@ -55,7 +44,7 @@ namespace mstate {
     export function settingsMachineEvent(aStateMachine: StateMachines,
         eventId: number, ms: number
     ) {
-        mcontroller.getStateMachineController(aStateMachine).settings(eventId, ms)
+        mcontroller.settings(eventId, ms)
     }
 
     /**
@@ -72,11 +61,7 @@ namespace mstate {
     export function defineState(aStateMachine: StateMachines, aStateName: string,
         body: () => void
     ) {
-        _currentStateMachines = aStateMachine
-        _currentStateId = convId(aStateName)
-        body()
-        _currentStateMachines = undefined
-        _currentStateId = undefined
+        mcontroller.defineState(aStateMachine,convNameId(aStateName), body)
     }
 
     /**
@@ -90,10 +75,10 @@ namespace mstate {
     export function declareEntry(
         body: () => void
     ) {
-        const [machine, state] = getCurrentStateId()
-        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).entryActions.push(new mmachine.EntryExitAction(body))
+        const [machine, stateId] = mcontroller.getDefineState()
+        mcontroller.getState(machine, stateId).entryActions.push(new mmachine.EntryExitAction(body))
         // uml
-        _simuStateUml(machine, state)
+        _simuStateUml(machine, stateId)
     }
 
     /**
@@ -109,10 +94,10 @@ namespace mstate {
     export function declareDo(
         aEvery: number, body: () => void
     ) {
-        const [machine, state] = getCurrentStateId()
-        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).doActivities.push(new mmachine.DoActivity(aEvery, body))
+        const [machineId, stateId] = mcontroller.getDefineState()
+        mcontroller.getState(machineId, stateId).doActivities.push(new mmachine.DoActivity(aEvery, body))
         // uml
-        _simuStateUml(machine, state)
+        _simuStateUml(machineId, stateId)
     }
 
     /**
@@ -126,10 +111,10 @@ namespace mstate {
     export function declareExit(
         body: () => void
     ) {
-        const [machine, state] = getCurrentStateId()
-        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).exitActions.push(new mmachine.EntryExitAction(body))
+        const [machineId, stateId] = mcontroller.getDefineState()
+        mcontroller.getState(machineId, stateId).exitActions.push(new mmachine.EntryExitAction(body))
         // uml
-        _simuStateUml(machine, state)
+        _simuStateUml(machineId, stateId)
     }
 
     /**
@@ -146,9 +131,9 @@ namespace mstate {
     export function declareSimpleTransition(
         aTriggerName: string, aToName: string
     ) {
-        const [machine, _] = getCurrentStateId()
+        const [machineId, _] = mcontroller.getDefineState()
         declareCustomTransition(aTriggerName, [aToName], function () {
-            mstate.transitTo(machine, 0)
+            mstate.transitTo(machineId, 0)
         })
     }
 
@@ -166,10 +151,10 @@ namespace mstate {
     export function declareTimeoutedTransition(
         aMs: number, aToName: string
     ) {
-        const [machine, _] = getCurrentStateId()
+        const [machineId, _] = mcontroller.getDefineState()
         declareCustomTransition("", [aToName], function () {
-            if (mstate.isTimeouted(machine, aMs)) {
-                mstate.transitTo(machine, 0)
+            if (mstate.isTimeouted(machineId, aMs)) {
+                mstate.transitTo(machineId, 0)
             }
         })
     }
@@ -189,20 +174,20 @@ namespace mstate {
     export function declareCustomTransition(
         aTriggerName: string, aTransList: string[], body: () => void
     ) {
-        const trigger = convId(aTriggerName)
-        const toList: number[] = []
+        const triggerId = convNameId(aTriggerName)
+        const toStateIdList: number[] = []
         for (const s of aTransList) {
-            toList.push(convId(s))
+            toStateIdList.push(convNameId(s))
         }
-        const [machine, state] = getCurrentStateId()
-        mcontroller.getStateMachineController(machine).stateMachine.getStateOrNew(state).transitions.push(new mmachine.Transition(toList, trigger, body))
+        const [machineId, stateId] = mcontroller.getDefineState()
+        mcontroller.getState(machineId, stateId).transitions.push(new mmachine.Transition(toStateIdList, triggerId, body))
         // uml
-        _simuTransitionUml(machine, state, aTransList)
+        _simuTransitionUml(machineId, stateId, aTransList)
     }
 
     /**
      * is timeouted.
-     * @param machine-state ID, as machine ID
+     * @param aStateMachine StateMachines
      * @param aMs timeout (milliseconds)
      */
     //% block="mstate $aStateMachine timeouted $aMs"
@@ -213,12 +198,12 @@ namespace mstate {
     export function isTimeouted(aStateMachine: StateMachines,
         aMs: number
     ): boolean {
-        return control.millis() > mcontroller.getStateMachineController(aStateMachine).stateMachine.tickOnInto + aMs
+        return control.millis() > mcontroller.getStateMachine(aStateMachine).tickOnInto + aMs
     }
 
     /**
      * trigger args.
-     * @param machine-state ID, as machine ID
+     * @param aStateMachine StateMachines
      * @returns trigger args
      */
     //% block="mstate $aStateMachine trigger args"
@@ -228,12 +213,12 @@ namespace mstate {
     //% advanced=true
     export function getTriggerArgs(aStateMachine: StateMachines,
     ): number[] {
-        return mcontroller.getStateMachineController(aStateMachine).stateMachine.triggerArgs
+        return mcontroller.getStateMachine(aStateMachine).triggerArgs
     }
 
     /**
      * transit to.
-     * @param machine-state ID, as machine ID
+     * @param aStateMachine StateMachines
      * @param index states index]
      */
     //% block="mstate $aStateMachine transit at $index"
@@ -244,7 +229,7 @@ namespace mstate {
     export function transitTo(aStateMachine: StateMachines,
         index: number
     ) {
-        mcontroller.getStateMachineController(aStateMachine).stateMachine.selectedToAt = index
+        mcontroller.getStateMachine(aStateMachine).selectedToAt = index
     }
 
     /**
@@ -257,8 +242,8 @@ namespace mstate {
     //% aTriggerName.defl="e"
     //% weight=95
     //% group="Command"
-    export function send(aStateMachine: StateMachines, aTriggerName: string) {
-        sendWith(aStateMachine, aTriggerName, [])
+    export function sendTrigger(aStateMachine: StateMachines, aTriggerName: string) {
+        sendTriggerArgs(aStateMachine, aTriggerName, [])
     }
 
     /**
@@ -273,10 +258,11 @@ namespace mstate {
     //% weight=90
     //% group="Command"
     //% advanced=true
-    export function sendWith(aStateMachine: StateMachines, aTriggerName: string,
+    export function sendTriggerArgs(aStateMachine: StateMachines, aTriggerName: string,
         aTriggerArgs: number[]
     ) {
-        mcontroller.getStateMachineController(aStateMachine).send(convId(aTriggerName), aTriggerArgs)
+        const triggerId = convNameId(aTriggerName)
+        mcontroller.getStateMachine(aStateMachine).send(triggerId, aTriggerArgs)
     }
 
     /**
@@ -291,7 +277,9 @@ namespace mstate {
     //% group="Command"
     export function start(aStateMachine: StateMachines, aStateName: string
     ) {
-        mcontroller.getStateMachineController(aStateMachine).start(convId(aStateName))
+        mcontroller.initialize()
+        const stateId = convNameId(aStateName)
+        mcontroller.getStateMachine(aStateMachine).start(stateId)
     }
 
 }
