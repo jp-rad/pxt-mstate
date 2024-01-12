@@ -2,7 +2,7 @@
  * tests go here; this will not be compiled when this package is used as an extension.
  */
 // blink
-function blinkLED() {
+function blinkLED () {
     if (0 == blinkNext) {
         blinkNext = 1
         led.setBrightness(100)
@@ -11,51 +11,6 @@ function blinkLED() {
         led.setBrightness(255)
     }
 }
-// Stete On
-// entry/
-// - Initialize On/Blink
-// - LED Heart
-mstate.defineState(StateMachines.M1, "On", function () {
-    mstate.descriptionsUml(["auto=OFF", "Heart icon"])
-    mstate.declareEntry(function () {
-        auto = 0
-        led.setBrightness(255)
-        blinkNext = 0
-        basic.showIcon(IconNames.Heart)
-    })
-    mstate.declareSimpleTransition("A", "Slow")
-    mstate.descriptionUml(":")
-    mstate.declareSimpleTransition("B", "Off")
-    mstate.descriptionUml("/auto=ON")
-    mstate.declareCustomTransition("A+B", ["Slow"], function () {
-        mstate.transitTo(StateMachines.M1, 0)
-        // effect
-        auto = 1
-    })
-})
-// State Off
-// entry/
-// - LED off
-mstate.defineState(StateMachines.M1, "Off", function () {
-    mstate.descriptionUml("LED off")
-    mstate.declareEntry(function () {
-        basic.clearScreen()
-    })
-    mstate.declareExit(function () {
-        led.setBrightness(255)
-        basic.showString("On!")
-    })
-    mstate.declareSimpleTransition("A", "On")
-})
-input.onButtonPressed(Button.A, function () {
-    mstate.sendTrigger(StateMachines.M1, "A")
-})
-input.onButtonPressed(Button.AB, function () {
-    mstate.sendTrigger(StateMachines.M1, "A+B")
-})
-input.onButtonPressed(Button.B, function () {
-    mstate.sendTrigger(StateMachines.M1, "B")
-})
 // State Slow
 // entry/
 // - reset blinkCount
@@ -90,6 +45,51 @@ mstate.defineState(StateMachines.M1, "Slow", function () {
     mstate.descriptionUml(":")
     mstate.declareSimpleTransition("B", "Off")
 })
+input.onButtonPressed(Button.A, function () {
+    mstate.sendTrigger(StateMachines.M1, "A")
+})
+// State Off
+// entry/
+// - LED off
+mstate.defineState(StateMachines.M1, "Off", function () {
+    mstate.descriptionUml("LED off")
+    mstate.declareEntry(function () {
+        basic.clearScreen()
+    })
+    mstate.declareExit(function () {
+        led.setBrightness(255)
+        basic.showString("On!")
+    })
+    mstate.declareSimpleTransition("A", "On")
+})
+input.onButtonPressed(Button.AB, function () {
+    mstate.sendTrigger(StateMachines.M1, "A+B")
+})
+input.onButtonPressed(Button.B, function () {
+    mstate.sendTrigger(StateMachines.M1, "B")
+})
+// Stete On
+// entry/
+// - Initialize On/Blink
+// - LED Heart
+mstate.defineState(StateMachines.M1, "On", function () {
+    mstate.descriptionsUml(["auto=OFF", "Heart icon"])
+    mstate.declareEntry(function () {
+        auto = 0
+        led.setBrightness(255)
+        blinkNext = 0
+        basic.showIcon(IconNames.Heart)
+    })
+    mstate.declareSimpleTransition("A", "Slow")
+    mstate.descriptionUml(":")
+    mstate.declareSimpleTransition("B", "Off")
+    mstate.descriptionUml("/auto=ON")
+    mstate.declareCustomTransition("A+B", ["Slow"], function () {
+        mstate.transitTo(StateMachines.M1, 0)
+        // effect
+        auto = 1
+    })
+})
 // State Fast
 // entry/
 // - reset blinkCount
@@ -121,8 +121,8 @@ mstate.defineState(StateMachines.M1, "Fast", function () {
     mstate.descriptionUml(">5s")
     mstate.declareTimeoutedTransition(5000, "On")
 })
-let blinkCount = 0
 let auto = 0
+let blinkCount = 0
 let blinkNext = 0
 mstate.start(StateMachines.M1, "Off")
 mstate.exportUml(StateMachines.M1, "Off")
