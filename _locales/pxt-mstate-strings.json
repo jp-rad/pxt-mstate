@@ -30,5 +30,6 @@
   "{id:category}Mstate": "Mstate",
   "{id:group}Command": "Command",
   "{id:group}Declare": "Declare",
-  "{id:group}Transition": "Transition"
+  "{id:group}Transition": "Transition",
+  "{id:group}UML": "UML"
 }

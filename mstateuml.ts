@@ -10,9 +10,8 @@ namespace mstate {
     //% aStateMachine.defl=StateMachines.M1
     //% aStateName.defl="a"
     //% weight=70
-    //% group="Command"
+    //% group="UML"
     //% shim=mstate::dummy_number_string
-    //% advanced=true
     export function exportUml(aStateMachine: StateMachines, aStateName: string
     ) {
         // for the simulator
@@ -29,8 +28,8 @@ namespace mstate {
         cb("[*] --> " + aStateName)
 
         // target machine
-        const target = mcontroller.getStateMachine(aStateMachine)
-        for (const state of target._states) {
+        const machine = mcontroller.getStateMachine(aStateMachine)
+        for (const state of machine._states) {
             // state
             const descStatePart = (state as any)["descState"]
                 ? " : " + ((state as any)["descState"] as string[]).join("\\n")
@@ -38,12 +37,13 @@ namespace mstate {
             cb("state " + mstate._simuConvName(state.stateId) + descStatePart)
             for (const trans of state.transitions) {
                 // transition
-                const transList: string[] = (trans as any)["transList"]
-                    ? (trans as any)["transList"] : []
+                const transIdList: number[] = (trans as any)["transIdList"]
+                    ? (trans as any)["transIdList"] : []
                 const descTransList: string[] = (trans as any)["descTransList"]
                     ? (trans as any)["descTransList"] : []
                 const trigger = mstate._simuConvName(trans.triggerId)
-                transList.forEach((toName, index) => {
+                transIdList.forEach((transId, index) => {
+                    let toName = mstate._simuConvName(transId)
                     if (toName == "") {
                         toName = "[*]"
                     }
@@ -74,7 +74,7 @@ namespace mstate {
                     } else {
                         cb("state " + mstate._simuConvName(state.stateId) + ": --> " + toName + triggerPart)
                     }
-                })  // transList.forEach
+                })  // transIdList.forEach
             }
         }
 
@@ -96,9 +96,8 @@ namespace mstate {
     //% block="description $aDescription"
     //% aDescription.defl="(description)"
     //% weight=60
-    //% group="Command"
+    //% group="UML"
     //% shim=mstate::dummy_string
-    //% advanced=true
     export function descriptionUml(aDescription: string) {
         const aDescriptionList = [aDescription]
         descriptionsUml(aDescriptionList)
@@ -116,9 +115,8 @@ namespace mstate {
      */
     //% block="description $aDescriptionList"
     //% weight=50
-    //% group="Command"
+    //% group="UML"
     //% shim=mstate::dummy_strings
-    //% advanced=true
     export function descriptionsUml(aDescriptionList: string[]) {
         _lastDescriptionList = aDescriptionList
     }
@@ -162,24 +160,24 @@ namespace mstate {
      * UML transition
      * @param machineId machine ID
      * @param stateId state ID
-     * @param aTransList array of next state name
+     * @param aTransIdList array of next state ID
      */
     //% block
-    //% shim=mstate::dummy_number_number_strings
+    //% shim=mstate::dummy_number_number_numbers
     //% blockHidden=true
     //% advanced=true
-    export function _simuTransitionUml(machineId: number, stateId: number, aTransList: string[]) {
+    export function _simuTransitionUml(machineId: number, stateId: number, aTransIdList: number[]) {
         // for the simulator
         const state = mcontroller.getState(machineId, stateId)
         const lastTrans: any = state.transitions[(state.transitions.length - 1)]
-        lastTrans["transList"] = aTransList
+        lastTrans["transIdList"] = aTransIdList
         lastTrans["descTransList"] = _simuLastDescriptionListUML()
     }
 
     /**
      * convert id (number) to state/trigger name (string)
      * @param nameId state id or trigger id
-     * @returns state name (string) or trigger name (string): "[<id>]" if undefined
+     * @returns state name (string) or trigger name (string): "[id]" if undefined
      */
     //% block
     //% shim=mstate::dummy_number_ret_string

@@ -10,13 +10,13 @@ namespace mstate
     }
 
     //%
-    void dummy_number_string(int i, StringData *s)
+    void dummy_number_number_numbers(int i, int j, int *a)
     {
         // only for the simulator
     }
 
     //%
-    void dummy_number_number_strings(int i, int j, StringData **a)
+    void dummy_number_string(int i, StringData *s)
     {
         // only for the simulator
     }

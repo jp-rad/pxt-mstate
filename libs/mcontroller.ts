@@ -61,6 +61,17 @@ namespace mcontroller {
     }
 
     /**
+     * create StateMachine
+     * @param machineId machine ID
+     * @returns instance of StateMachine
+     */
+    function _createNewStateMacnhe(machineId: number) {
+        return new mmachine.StateMachine(machineId, function () {
+            _idleUpdate(machineId)
+        })
+    }
+
+    /**
      * get or create StateMachine
      * @param machineId machine ID
      * @returns instance of StateMachine
@@ -70,13 +81,17 @@ namespace mcontroller {
         if (obj) {
             return obj
         }
-        const newObj = new mmachine.StateMachine(machineId, function () {
-            _idleUpdate(machineId)
-        })
+        const newObj = _createNewStateMacnhe(machineId)
         stateMachineList.push(newObj)
         return newObj
     }
     
+    /**
+     * get or create State of StateMachine
+     * @param machineId machine ID
+     * @param stateId state ID
+     * @returns instance of State
+     */
     export function getState(machineId: number, stateId: number): mmachine.State {
         return getStateMachine(machineId).getStateOrNew(stateId)
     }

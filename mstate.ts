@@ -15,18 +15,8 @@ enum StateMachines {
  *       http://fontawesome.io/icons
  */
 //% weight=100 color="#4C97FF" icon="\uf362"
-//% groups="['Command', 'Declare', 'Transit']"
+//% groups="['Command', 'Declare', 'Transit', 'UML]"
 namespace mstate {
-
-    /**
-     * convert state/trigger name (string) to id (number): new id if undefined
-     * @param name state name (string) or trigger name (string)
-     * @returns state id or trigger id
-     */
-    function convNameId(name: string
-    ): number {
-        return mname.getNameIdOrNew(name)
-    }
 
     /**
      * Internal event settings
@@ -61,7 +51,7 @@ namespace mstate {
     export function defineState(aStateMachine: StateMachines, aStateName: string,
         body: () => void
     ) {
-        mcontroller.defineState(aStateMachine,convNameId(aStateName), body)
+        mcontroller.defineState(aStateMachine, mname.getNameIdOrNew(aStateName), body)
     }
 
     /**
@@ -174,15 +164,15 @@ namespace mstate {
     export function declareCustomTransition(
         aTriggerName: string, aTransList: string[], body: () => void
     ) {
-        const triggerId = convNameId(aTriggerName)
+        const triggerId = mname.getNameIdOrNew(aTriggerName)
         const toStateIdList: number[] = []
         for (const s of aTransList) {
-            toStateIdList.push(convNameId(s))
+            toStateIdList.push(mname.getNameIdOrNew(s))
         }
         const [machineId, stateId] = mcontroller.getDefineState()
         mcontroller.getState(machineId, stateId).transitions.push(new mmachine.Transition(toStateIdList, triggerId, body))
         // uml
-        _simuTransitionUml(machineId, stateId, aTransList)
+        _simuTransitionUml(machineId, stateId, toStateIdList)
     }
 
     /**
@@ -261,7 +251,7 @@ namespace mstate {
     export function sendTriggerArgs(aStateMachine: StateMachines, aTriggerName: string,
         aTriggerArgs: number[]
     ) {
-        const triggerId = convNameId(aTriggerName)
+        const triggerId = mname.getNameIdOrNew(aTriggerName)
         mcontroller.getStateMachine(aStateMachine).send(triggerId, aTriggerArgs)
     }
 
@@ -278,7 +268,7 @@ namespace mstate {
     export function start(aStateMachine: StateMachines, aStateName: string
     ) {
         mcontroller.initialize()
-        const stateId = convNameId(aStateName)
+        const stateId = mname.getNameIdOrNew(aStateName)
         mcontroller.getStateMachine(aStateMachine).start(stateId)
     }
 
