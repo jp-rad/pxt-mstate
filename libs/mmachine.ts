@@ -24,7 +24,7 @@ namespace mmachine {
     export class EntryExitAction {
 
         /**
-         * execute Entry.
+         * execute Entry/Exit.
          */
         execute: BodyCallback
 
@@ -42,7 +42,14 @@ namespace mmachine {
      */
     export class DoActivity {
 
+        /**
+         * code to run, body()
+         */
         _cb: BodyCallback
+
+        /**
+         * interval
+         */
         _ms: number
 
         /**
@@ -77,14 +84,17 @@ namespace mmachine {
      * Transition
      */
     export class Transition {
+
         /**
          * array of state id, transition to.
          */
         toStateIdList: number[]
+
         /**
          * trigger id.
          */
         triggerId: number
+
         /**
          * execute Transition.
          */
@@ -104,27 +114,36 @@ namespace mmachine {
     }
 
     export class State {
+
         /**
          * state id.
          */
         stateId: number
+
         /**
          * array of entry action
          */
         entryActions: EntryExitAction[]
+
         /**
          * array of do activity
          */
         doActivities: DoActivity[]
+
         /**
          * array of exit action
          */
         exitActions: EntryExitAction[]
+
         /**
          * array of transition
          */
         transitions: Transition[]
 
+        /**
+         * constructor
+         * @param stateId state ID
+         */
         constructor(stateId: number) {
             this.stateId = stateId
             this.entryActions = []
@@ -138,10 +157,12 @@ namespace mmachine {
      * trigger id and trigger args
      */
     class TriggerMessage {
+
         /**
          * trigger id.
          */
         triggerId: number
+
         /**
          * trigger args.
          */
@@ -180,7 +201,7 @@ namespace mmachine {
         /**
          * idle update callback.
          */
-        _idleUpdateCallback: IdleUpdateCallback
+        _cbIdleUpdate: IdleUpdateCallback
 
         /**
          * next proc
@@ -226,29 +247,15 @@ namespace mmachine {
          */
         constructor(machineId: number, cbIdleUpdate: IdleUpdateCallback) {
             this.machineId = machineId
-            this._idleUpdateCallback = cbIdleUpdate
+            this._cbIdleUpdate = cbIdleUpdate
             this._defaultStateId = mname.NONE_ID
-
             this._states = []
-
-            // current
             this._currentState = undefined
-
-            // trigger queues
             this._triggerMessageQueues = []
-
-            // current transition
             this._transitTo = TRANSITION_CANCELED
-
-            // current trigger args
             this.triggerArgs = []
-
-            // selectable taransition
             this.selectedToAt = TRANSITION_CANCELED
-
-            // proc
             this._nextProc = ProcState.Idle
-
         }
 
         /**
@@ -261,7 +268,7 @@ namespace mmachine {
                 return undefined    // INITIAL/FINAL state
             }
             const obj = this._states.find(item => stateId == item.stateId)
-            if (undefined !== obj) {
+            if (obj) {
                 return obj
             }
             const newObj = new State(stateId)
@@ -269,6 +276,7 @@ namespace mmachine {
             return newObj
         }
 
+        // Transition
         _doCallbackSelectable(transition: Transition, triggerArgs: number[]) {
             this.selectedToAt = TRANSITION_CANCELED    // reset
             this.triggerArgs = triggerArgs             // current trigger args
@@ -308,6 +316,9 @@ namespace mmachine {
             return false
         }
 
+        /**
+         * update
+         */
         update() {
             let updating = true
             do {
@@ -319,7 +330,7 @@ namespace mmachine {
                     case ProcState.Into:
                         this._currentState = this.getStateOrNew(this._transitTo)
                         this.tickOnInto = control.millis()
-                        if (undefined !== this._currentState) {
+                        if (this._currentState) {
                             for (const v of this._currentState.doActivities) {
                                 v.nextTick = -1
                             }
@@ -377,23 +388,33 @@ namespace mmachine {
             } while (updating)
         }
 
+        /**
+         * start
+         * @param stateId state ID
+         * @returns started
+         */
         start(stateId: number): boolean {
             if (ProcState.Idle == this._nextProc) {
                 this._defaultStateId = stateId
                 this._nextProc = ProcState.Start
-                this._idleUpdateCallback()
+                this._cbIdleUpdate()
                 return true
             } else {
                 return false
             }
         }
 
+        /**
+         * send
+         * @param triggerId trigger ID
+         * @param triggerArgs  trigger args
+         */
         send(triggerId: number, triggerArgs: number[]) {
             if (ProcState.Idle != this._nextProc) {
                 // queuing
                 const queue = new TriggerMessage(triggerId, triggerArgs)
                 this._triggerMessageQueues.push(queue)
-                this._idleUpdateCallback()
+                this._cbIdleUpdate()
             }
         }
     }

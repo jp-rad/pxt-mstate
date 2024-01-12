@@ -2,6 +2,7 @@
  * state/trigger id:name
  */
 namespace mname {
+
     /**
      * id:0 - INITIAL/FINAL/Completion Transition.
      */

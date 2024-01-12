@@ -12,8 +12,7 @@ namespace mstate {
     //% weight=70
     //% group="UML"
     //% shim=mstate::dummy_number_string
-    export function exportUml(aStateMachine: StateMachines, aStateName: string
-    ) {
+    export function exportUml(aStateMachine: StateMachines, aStateName: string) {
         // for the simulator
         const cb = console.log
         cb("@startuml")
@@ -144,8 +143,7 @@ namespace mstate {
     //% shim=mstate::dummy_number_number
     //% blockHidden=true
     //% advanced=true
-    export function _simuStateUml(machineId: number, stateId: number
-    ) {
+    export function _simuStateUml(machineId: number, stateId: number) {
         // for the simulator
         const state: any = mcontroller.getState(machineId, stateId)
         const descList = _simuLastDescriptionListUML()
@@ -183,8 +181,7 @@ namespace mstate {
     //% shim=mstate::dummy_number_ret_string
     //% blockHidden=true
     //% advanced=true
-    export function _simuConvName(nameId: number
-    ): string {
+    export function _simuConvName(nameId: number): string {
         if (0 <= nameId && mname.nameList.length > nameId) {
             return mname.nameList[nameId]
         }
