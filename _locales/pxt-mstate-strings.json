@@ -1,5 +1,4 @@
 {
-  "mcontroller|block": "mcontroller",
   "mmachine|block": "mmachine",
   "mname|block": "mname",
   "mstate._simuConvName|block": "true",
@@ -24,7 +23,6 @@
   "mstate.start|block": "start $aStateMachine $aStateName",
   "mstate.transitTo|block": "mstate $aStateMachine transit at $index",
   "mstate|block": "mstate",
-  "{id:category}Mcontroller": "Mcontroller",
   "{id:category}Mmachine": "Mmachine",
   "{id:category}Mname": "Mname",
   "{id:category}Mstate": "Mstate",
