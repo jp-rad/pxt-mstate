@@ -1,6 +1,6 @@
 {
     "name": "pxt-mstate",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "description": "Let's try state machine with micro:bit!",
     "license": "MIT",
     "dependencies": {
@@ -11,7 +11,10 @@
         "enums.d.ts",
         "shims.d.ts",
         "mstate.cpp",
-        "mstate.ts"
+        "mstate.ts",
+        "mstateuml.ts",
+        "libs/mmachine.ts",
+        "libs/mname.ts"
     ],
     "testFiles": [
         "test.ts"
