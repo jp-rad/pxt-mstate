@@ -13,7 +13,6 @@
         "mstate.cpp",
         "mstate.ts",
         "mstateuml.ts",
-        "libs/mcontroller.ts",
         "libs/mmachine.ts",
         "libs/mname.ts"
     ],

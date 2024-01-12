@@ -15,17 +15,129 @@ enum StateMachines {
  *       http://fontawesome.io/icons
  */
 //% weight=100 color="#4C97FF" icon="\uf362"
-//% groups="['Command', 'Declare', 'Transit']"
+//% groups="['Command', 'Declare', 'Transit', 'UML]"
 namespace mstate {
 
     /**
-     * convert state/trigger name (string) to id (number): new id if undefined
-     * @param name state name (string) or trigger name (string)
-     * @returns state id or trigger id
+     * controller - micro:bit
      */
-    function convNameId(name: string
-    ): number {
-        return mname.getNameIdOrNew(name)
+    export namespace mcontroller {
+
+        const MICROBIT_CUSTOM_ID_BASE = 32768
+        const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 0x100
+        const DEFAULT_UPDATE_LOOP_INTERVAL = 100
+
+        let _defineMachineId: StateMachines = undefined
+        let _defineStateId: number = undefined
+
+        /**
+         * define state - machineId/stateId
+         * @param machineId machine ID
+         * @param stateId state ID
+         * @param body code to run, body()
+         */
+        export function defineState(machineId: number, stateId: number, body: () => void) {
+
+            _defineMachineId = machineId
+            _defineStateId = stateId
+            body()
+            _defineMachineId = undefined
+            _defineStateId = undefined
+        }
+
+        /**
+         * get machine ID and state ID
+         * @returns [machine ID, state ID]
+         */
+        export function getDefineState() {
+            return [_defineMachineId, _defineStateId]
+        }
+
+        // state machine
+        let stateMachineList: mmachine.StateMachine[] = []
+
+        // update event/loop
+        let _initialized: boolean = false
+        let _updateEventId: number = DEFAULT_UPDATE_EVENT_ID
+        let _updateLoopInterval: number = DEFAULT_UPDATE_LOOP_INTERVAL
+
+        /**
+         * initialize
+         * - update event handler
+         * - update event loop
+         */
+        export function initialize(): void {
+            if (!_initialized) {
+                _initialized = true
+                // update event handler
+                control.onEvent(_updateEventId, 0, function () {
+                    const machineId = control.eventValue()
+                    getStateMachine(machineId).update()
+                })
+                // update event loop
+                loops.everyInterval(_updateLoopInterval, function () {
+                    for (const stateMachine of stateMachineList) {
+                        _idleUpdate(stateMachine.machineId)
+                    }
+                })
+            }
+        }
+
+        /**
+         * idle update
+         * @param machineId machine ID
+         */
+        function _idleUpdate(machineId: number) {
+            control.raiseEvent(_updateEventId, machineId)
+        }
+
+        /**
+         * settings
+         * @param eventId event ID
+         * @param ms update loop interval (ms)
+         */
+        export function settings(eventId: number, ms: number) {
+            if (!_initialized) {
+                _updateEventId = eventId
+                _updateLoopInterval = ms
+            }
+        }
+
+        /**
+         * create StateMachine
+         * @param machineId machine ID
+         * @returns instance of StateMachine
+         */
+        function _createNewStateMacnhe(machineId: number) {
+            return new mmachine.StateMachine(machineId, function () {
+                _idleUpdate(machineId)
+            })
+        }
+
+        /**
+         * get or create StateMachine
+         * @param machineId machine ID
+         * @returns instance of StateMachine
+         */
+        export function getStateMachine(machineId: number) {
+            const obj = stateMachineList.find(item => machineId == item.machineId)
+            if (obj) {
+                return obj
+            }
+            const newObj = _createNewStateMacnhe(machineId)
+            stateMachineList.push(newObj)
+            return newObj
+        }
+
+        /**
+         * get or create State of StateMachine
+         * @param machineId machine ID
+         * @param stateId state ID
+         * @returns instance of State
+         */
+        export function getState(machineId: number, stateId: number): mmachine.State {
+            return getStateMachine(machineId).getStateOrNew(stateId)
+        }
     }
 
     /**
@@ -41,9 +153,7 @@ namespace mstate {
     //% ms.defl=100
     //% weight=190
     //% advanced=true
-    export function settingsMachineEvent(aStateMachine: StateMachines,
-        eventId: number, ms: number
-    ) {
+    export function settingsMachineEvent(aStateMachine: StateMachines, eventId: number, ms: number) {
         mcontroller.settings(eventId, ms)
     }
 
@@ -58,10 +168,8 @@ namespace mstate {
     //% aStateName.defl="a"
     //% weight=180
     //% group="Declare"
-    export function defineState(aStateMachine: StateMachines, aStateName: string,
-        body: () => void
-    ) {
-        mcontroller.defineState(aStateMachine,convNameId(aStateName), body)
+    export function defineState(aStateMachine: StateMachines, aStateName: string, body: () => void) {
+        mcontroller.defineState(aStateMachine, mname.getNameIdOrNew(aStateName), body)
     }
 
     /**
@@ -72,9 +180,7 @@ namespace mstate {
     //% handlerStatement
     //% weight=170
     //% group="Declare"
-    export function declareEntry(
-        body: () => void
-    ) {
+    export function declareEntry(body: () => void) {
         const [machine, stateId] = mcontroller.getDefineState()
         mcontroller.getState(machine, stateId).entryActions.push(new mmachine.EntryExitAction(body))
         // uml
@@ -91,9 +197,7 @@ namespace mstate {
     //% handlerStatement
     //% weight=160
     //% group="Declare"
-    export function declareDo(
-        aEvery: number, body: () => void
-    ) {
+    export function declareDo(aEvery: number, body: () => void) {
         const [machineId, stateId] = mcontroller.getDefineState()
         mcontroller.getState(machineId, stateId).doActivities.push(new mmachine.DoActivity(aEvery, body))
         // uml
@@ -108,9 +212,7 @@ namespace mstate {
     //% handlerStatement
     //% weight=150
     //% group="Declare"
-    export function declareExit(
-        body: () => void
-    ) {
+    export function declareExit(body: () => void) {
         const [machineId, stateId] = mcontroller.getDefineState()
         mcontroller.getState(machineId, stateId).exitActions.push(new mmachine.EntryExitAction(body))
         // uml
@@ -128,9 +230,7 @@ namespace mstate {
     //% inlineInputMode=inline
     //% weight=140
     //% group="Transition"
-    export function declareSimpleTransition(
-        aTriggerName: string, aToName: string
-    ) {
+    export function declareSimpleTransition(aTriggerName: string, aToName: string) {
         const [machineId, _] = mcontroller.getDefineState()
         declareCustomTransition(aTriggerName, [aToName], function () {
             mstate.transitTo(machineId, 0)
@@ -148,9 +248,7 @@ namespace mstate {
     //% inlineInputMode=inline
     //% weight=130
     //% group="Transition"
-    export function declareTimeoutedTransition(
-        aMs: number, aToName: string
-    ) {
+    export function declareTimeoutedTransition(aMs: number, aToName: string) {
         const [machineId, _] = mcontroller.getDefineState()
         declareCustomTransition("", [aToName], function () {
             if (mstate.isTimeouted(machineId, aMs)) {
@@ -171,18 +269,16 @@ namespace mstate {
     //% handlerStatement
     //% weight=120
     //% group="Transition"
-    export function declareCustomTransition(
-        aTriggerName: string, aTransList: string[], body: () => void
-    ) {
-        const triggerId = convNameId(aTriggerName)
+    export function declareCustomTransition(aTriggerName: string, aTransList: string[], body: () => void) {
+        const triggerId = mname.getNameIdOrNew(aTriggerName)
         const toStateIdList: number[] = []
         for (const s of aTransList) {
-            toStateIdList.push(convNameId(s))
+            toStateIdList.push(mname.getNameIdOrNew(s))
         }
         const [machineId, stateId] = mcontroller.getDefineState()
         mcontroller.getState(machineId, stateId).transitions.push(new mmachine.Transition(toStateIdList, triggerId, body))
         // uml
-        _simuTransitionUml(machineId, stateId, aTransList)
+        _simuTransitionUml(machineId, stateId, toStateIdList)
     }
 
     /**
@@ -195,9 +291,7 @@ namespace mstate {
     //% aMs.shadow="timePicker"
     //% weight=110
     //% group="Transition"
-    export function isTimeouted(aStateMachine: StateMachines,
-        aMs: number
-    ): boolean {
+    export function isTimeouted(aStateMachine: StateMachines, aMs: number): boolean {
         return control.millis() > mcontroller.getStateMachine(aStateMachine).tickOnInto + aMs
     }
 
@@ -211,8 +305,7 @@ namespace mstate {
     //% weight=105
     //% group="Transition"
     //% advanced=true
-    export function getTriggerArgs(aStateMachine: StateMachines,
-    ): number[] {
+    export function getTriggerArgs(aStateMachine: StateMachines,): number[] {
         return mcontroller.getStateMachine(aStateMachine).triggerArgs
     }
 
@@ -226,9 +319,7 @@ namespace mstate {
     //% index.defl=0
     //% weight=100
     //% group="Transition"
-    export function transitTo(aStateMachine: StateMachines,
-        index: number
-    ) {
+    export function transitTo(aStateMachine: StateMachines, index: number) {
         mcontroller.getStateMachine(aStateMachine).selectedToAt = index
     }
 
@@ -258,10 +349,8 @@ namespace mstate {
     //% weight=90
     //% group="Command"
     //% advanced=true
-    export function sendTriggerArgs(aStateMachine: StateMachines, aTriggerName: string,
-        aTriggerArgs: number[]
-    ) {
-        const triggerId = convNameId(aTriggerName)
+    export function sendTriggerArgs(aStateMachine: StateMachines, aTriggerName: string, aTriggerArgs: number[]) {
+        const triggerId = mname.getNameIdOrNew(aTriggerName)
         mcontroller.getStateMachine(aStateMachine).send(triggerId, aTriggerArgs)
     }
 
@@ -275,10 +364,9 @@ namespace mstate {
     //% aStateName.defl="a"
     //% weight=80
     //% group="Command"
-    export function start(aStateMachine: StateMachines, aStateName: string
-    ) {
+    export function start(aStateMachine: StateMachines, aStateName: string) {
         mcontroller.initialize()
-        const stateId = convNameId(aStateName)
+        const stateId = mname.getNameIdOrNew(aStateName)
         mcontroller.getStateMachine(aStateMachine).start(stateId)
     }
 
