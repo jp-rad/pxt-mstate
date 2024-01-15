@@ -147,7 +147,7 @@ namespace mstate {
      * @param ms Event loop interval (default: 100ms)
      */
     //% block="settings $aStateMachine event ID: $eventId every: $ms ms"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% eventId.defl=32768
     //% ms.shadow="timePicker"
     //% ms.defl=100
@@ -164,7 +164,7 @@ namespace mstate {
      * @param body code to run
      */
     //% block="define $aStateMachine $mstateId to $aStateName"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% aStateName.defl="a"
     //% weight=180
     //% group="Declare"
@@ -287,7 +287,7 @@ namespace mstate {
      * @param aMs timeout (milliseconds)
      */
     //% block="mstate $aStateMachine timeouted $aMs"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% aMs.shadow="timePicker"
     //% weight=110
     //% group="Transition"
@@ -301,7 +301,7 @@ namespace mstate {
      * @returns trigger args
      */
     //% block="mstate $aStateMachine trigger args"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% weight=105
     //% group="Transition"
     //% advanced=true
@@ -315,7 +315,7 @@ namespace mstate {
      * @param index states index]
      */
     //% block="mstate $aStateMachine transit at $index"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% index.defl=0
     //% weight=100
     //% group="Transition"
@@ -329,7 +329,7 @@ namespace mstate {
      * @param aTriggerName trigger name
      */
     //% block="send $aStateMachine $aTriggerName"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% aTriggerName.defl="e"
     //% weight=95
     //% group="Command"
@@ -344,7 +344,7 @@ namespace mstate {
      * @param aTriggerArgs args
      */
     //% block="send $aStateMachine $aTriggerName $aTriggerArgs"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% aTriggerName.defl="e"
     //% weight=90
     //% group="Command"
@@ -360,7 +360,7 @@ namespace mstate {
      * @param aStateName default state name
      */
     //% block="start $aStateMachine $aStateName"
-    //% aStateMachine.defl=StateMachines.M1
+    //% aStateMachine.defl=StateMachines.M0
     //% aStateName.defl="a"
     //% weight=80
     //% group="Command"
