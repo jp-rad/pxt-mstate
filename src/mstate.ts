@@ -66,7 +66,7 @@ namespace mstate {
             if (!_initialized) {
                 _initialized = true
                 // update event handler
-                control.onEvent(CUSTOM_BUS_ID.CUSTOM_EVENT_ID_MSTATE_UPDATE, 0, function () {
+                control.onEvent(MSTATE_BUS_ID.MSTATE_ID_UPDATE, 0, function () {
                     const machineId = control.eventValue()
                     getStateMachine(machineId).update()
                 })
@@ -84,7 +84,7 @@ namespace mstate {
          * @param machineId machine ID
          */
         function _idleUpdate(machineId: number) {
-            control.raiseEvent(CUSTOM_BUS_ID.CUSTOM_EVENT_ID_MSTATE_UPDATE, machineId)
+            control.raiseEvent(MSTATE_BUS_ID.MSTATE_ID_UPDATE, machineId)
         }
 
         /**
