@@ -4,43 +4,43 @@ namespace mstate
 {
 
     //%
-    void dummy_number_number(int i, int j)
+    void dummy_exportUml(int i, StringData *s)
     {
         // only for the simulator
     }
 
     //%
-    void dummy_number_number_numbers(int i, int j, int *a)
+    void dummy_descriptionUml(StringData *a)
     {
         // only for the simulator
     }
 
     //%
-    void dummy_number_string(int i, StringData *s)
+    void dummy_descriptionsUml(StringData **a)
     {
         // only for the simulator
     }
 
     //%
-    void dummy_string(StringData *a)
+    StringData **dummy_simuLastDescriptionListUML()
     {
         // only for the simulator
     }
 
     //%
-    void dummy_strings(StringData **a)
+    void dummy_simuStateUml(int i, int j)
     {
         // only for the simulator
     }
 
     //%
-    StringData **dummy_ret_strings()
+    void dummy_simuTransitionUml(int i, int j, int *a)
     {
         // only for the simulator
     }
 
     //%
-    StringData *dummy_number_ret_string(int i)
+    StringData *dummy_simuConvName(int i)
     {
         // only for the simulator
     }
