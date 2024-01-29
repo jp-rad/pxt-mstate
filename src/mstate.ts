@@ -23,8 +23,6 @@ namespace mstate {
      */
     export namespace mcontroller {
 
-        const MICROBIT_CUSTOM_ID_BASE = 32768
-        const DEFAULT_UPDATE_EVENT_ID = MICROBIT_CUSTOM_ID_BASE + 0x100
         const DEFAULT_UPDATE_LOOP_INTERVAL = 100
 
         let _defineMachineId: StateMachines = undefined
@@ -37,7 +35,6 @@ namespace mstate {
          * @param body code to run, body()
          */
         export function defineState(machineId: number, stateId: number, body: () => void) {
-
             _defineMachineId = machineId
             _defineStateId = stateId
             body()
@@ -58,7 +55,6 @@ namespace mstate {
 
         // update event/loop
         let _initialized: boolean = false
-        let _updateEventId: number = DEFAULT_UPDATE_EVENT_ID
         let _updateLoopInterval: number = DEFAULT_UPDATE_LOOP_INTERVAL
 
         /**
@@ -70,7 +66,7 @@ namespace mstate {
             if (!_initialized) {
                 _initialized = true
                 // update event handler
-                control.onEvent(_updateEventId, 0, function () {
+                control.onEvent(CUSTOM_BUS_ID.CUSTOM_EVENT_ID_MSTATE_UPDATE, 0, function () {
                     const machineId = control.eventValue()
                     getStateMachine(machineId).update()
                 })
@@ -88,17 +84,15 @@ namespace mstate {
          * @param machineId machine ID
          */
         function _idleUpdate(machineId: number) {
-            control.raiseEvent(_updateEventId, machineId)
+            control.raiseEvent(CUSTOM_BUS_ID.CUSTOM_EVENT_ID_MSTATE_UPDATE, machineId)
         }
 
         /**
          * settings
-         * @param eventId event ID
          * @param ms update loop interval (ms)
          */
-        export function settings(eventId: number, ms: number) {
+        export function settings(ms: number) {
             if (!_initialized) {
-                _updateEventId = eventId
                 _updateLoopInterval = ms
             }
         }
@@ -143,18 +137,32 @@ namespace mstate {
     /**
      * Internal event settings
      * @param aStateMachine StateMachines
-     * @param eventId Event ID (default: 32868 = 32768 + 100)
+     * @param eventId Event ID
      * @param ms Event loop interval (default: 100ms)
      */
     //% block="settings $aStateMachine event ID: $eventId every: $ms ms"
     //% aStateMachine.defl=StateMachines.M0
-    //% eventId.defl=32768
+    //% eventId.defl=33797
     //% ms.shadow="timePicker"
     //% ms.defl=100
     //% weight=190
     //% advanced=true
+    //% deprecated
     export function settingsMachineEvent(aStateMachine: StateMachines, eventId: number, ms: number) {
-        mcontroller.settings(eventId, ms)
+        mcontroller.settings(ms)
+    }
+
+    /**
+     * Internal event settings
+     * @param ms Event loop interval (default: 100ms)
+     */
+    //% block="settings $ms ms"
+    //% ms.shadow="timePicker"
+    //% ms.defl=100
+    //% weight=190
+    //% advanced=true
+    export function settings(ms: number) {
+        mcontroller.settings(ms)
     }
 
     /**
