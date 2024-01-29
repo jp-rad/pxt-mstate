@@ -11,7 +11,7 @@ namespace mstate {
     //% aStateName.defl="a"
     //% weight=70
     //% group="UML"
-    //% shim=mstate::dummy_number_string
+    //% shim=mstate::dummy_exportUml
     export function exportUml(aStateMachine: StateMachines, aStateName: string) {
         // for the simulator
         const cb = console.log
@@ -96,7 +96,7 @@ namespace mstate {
     //% aDescription.defl="(description)"
     //% weight=60
     //% group="UML"
-    //% shim=mstate::dummy_string
+    //% shim=mstate::dummy_descriptionUml
     export function descriptionUml(aDescription: string) {
         const aDescriptionList = [aDescription]
         descriptionsUml(aDescriptionList)
@@ -115,19 +115,16 @@ namespace mstate {
     //% block="description $aDescriptionList"
     //% weight=50
     //% group="UML"
-    //% shim=mstate::dummy_strings
+    //% shim=mstate::dummy_descriptionsUml
     export function descriptionsUml(aDescriptionList: string[]) {
         _lastDescriptionList = aDescriptionList
     }
 
     /**
-     * UML last description list
+     * (internal) UML last description list
      * @returns list of description
      */
-    //% block
-    //% shim=mstate::dummy_ret_strings
-    //% blockHidden=true
-    //% advanced=true
+    //% shim=mstate::dummy_simuLastDescriptionListUML
     export function _simuLastDescriptionListUML(): string[] {
         const ret = _lastDescriptionList
         _lastDescriptionList = []
@@ -135,14 +132,11 @@ namespace mstate {
     }
 
     /**
-     * UML state
+     * (internal) UML state
      * @param machineId  machine ID
      * @param stateId state name
      */
-    //% block
-    //% shim=mstate::dummy_number_number
-    //% blockHidden=true
-    //% advanced=true
+    //% shim=mstate::dummy_simuStateUml
     export function _simuStateUml(machineId: number, stateId: number) {
         // for the simulator
         const state: any = mcontroller.getState(machineId, stateId)
@@ -155,15 +149,12 @@ namespace mstate {
     }
 
     /**
-     * UML transition
+     * (internal) UML transition
      * @param machineId machine ID
      * @param stateId state ID
      * @param aTransIdList array of next state ID
      */
-    //% block
-    //% shim=mstate::dummy_number_number_numbers
-    //% blockHidden=true
-    //% advanced=true
+    //% shim=mstate::dummy_simuTransitionUml
     export function _simuTransitionUml(machineId: number, stateId: number, aTransIdList: number[]) {
         // for the simulator
         const state = mcontroller.getState(machineId, stateId)
@@ -173,14 +164,11 @@ namespace mstate {
     }
 
     /**
-     * convert id (number) to state/trigger name (string)
+     * (internal) convert id (number) to state/trigger name (string)
      * @param nameId state id or trigger id
      * @returns state name (string) or trigger name (string): "[id]" if undefined
      */
-    //% block
-    //% shim=mstate::dummy_number_ret_string
-    //% blockHidden=true
-    //% advanced=true
+    //% shim=mstate::dummy_simuConvName
     export function _simuConvName(nameId: number): string {
         if (0 <= nameId && mname.nameList.length > nameId) {
             return mname.nameList[nameId]
