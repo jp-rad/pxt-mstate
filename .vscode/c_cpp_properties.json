@@ -3,7 +3,7 @@
         {
             "name": "micro:bit v2",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/src/**"
             ],
             "defines": [
                 "CODAL_CONFIG_H"
@@ -16,10 +16,9 @@
         {
             "name": "micro:bit v1",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/src/**"
             ],
-            "defines": [
-            ],
+            "defines": [],
             "compilerPath": "/usr/bin/clang",
             "cStandard": "c11",
             "cppStandard": "c++14",

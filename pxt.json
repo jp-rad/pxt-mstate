@@ -10,11 +10,12 @@
         "README.md",
         "enums.d.ts",
         "shims.d.ts",
-        "mstate.cpp",
-        "mstate.ts",
-        "mstateuml.ts",
-        "libs/mmachine.ts",
-        "libs/mname.ts"
+        "inc/CustomMicroBit.h",
+        "src/mmachine.ts",
+        "src/mname.ts",
+        "src/mstate.ts",
+        "src/mstateuml.cpp",
+        "src/mstateuml.ts"
     ],
     "testFiles": [
         "test.ts"
