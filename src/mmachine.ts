@@ -1,422 +1,369 @@
-/**
- * state machine
- */
-namespace mmachine {
+// MIT License
+// 
+// Copyright (c) 2023-2024 jp-rad
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
-    /**
-     * callback of block body
-     */
+namespace mmachine {
+    export type GetElapsedMillisCallback = () => number
+
+    let _cbGetElapsedMillis: GetElapsedMillisCallback
+
+    export function initGetElapsedMillis(cb: GetElapsedMillisCallback) {
+        if (cb) {
+            _cbGetElapsedMillis = cb
+        } else {
+            _cbGetElapsedMillis = () => 0
+        }
+    }
+
+    export type QueueRunToCompletionCallback = (machineId: number) => void
+
+    let _cbQueueRunToCompletion: QueueRunToCompletionCallback
+
+    export function initQueueRunToCompletion(cb: QueueRunToCompletionCallback) {
+        if (cb) {
+            _cbQueueRunToCompletion = cb
+        } else {
+            _cbQueueRunToCompletion = (machineId: number) => { }
+        }
+    }
+
+    export namespace namestore {
+        export const SYS_START_TRIGGER_ID = -1  // StarterTransition
+        export const NONE_ID = 0    //  0 - INITIAL/FINAL/Completion Transition
+        export const NONE_STR = ""  // "" - INITIAL/FINAL/Completion Transition
+        export let storeNameId: any = {}
+        storeNameId[NONE_STR] = NONE_ID
+        export function getNameIdOrNew(name: string): number {
+            let id = storeNameId[name]
+            if (undefined === id) {
+                id = Object.keys(storeNameId).length
+                storeNameId[name] = id
+            }
+            return id
+        }
+    }
+
     export type BodyCallback = () => void
 
-    /**
-     * callback of idle update
-     */
-    export type IdleUpdateCallback = () => void
-
-    /**
-     * transition canceled
-     */
-    const TRANSITION_CANCELED = -1
-
-    /**
-     * Entry/Exit Action
-     */
-    export class EntryExitAction {
-
-        /**
-         * execute Entry/Exit.
-         */
+    export class BodyAction {
         execute: BodyCallback
-
-        /**
-         * constructor
-         * @param cb code to run, body()
-         */
         constructor(cb: BodyCallback) {
             this.execute = cb
         }
     }
 
-    /**
-     * Do Activity
-     */
-    export class DoActivity {
+    export type DoActivityCallback = (counter: number) => void
 
-        /**
-         * code to run, body()
-         */
-        _cb: BodyCallback
-
-        /**
-         * interval
-         */
-        _ms: number
-
-        /**
-         * The next tick to be callbacked.
-         */
-        nextTick: number
-
-        /**
-         * constructor
-         * @param ms interval (ms)
-         * @param cb code to run, body()
-         */
-        constructor(ms: number, cb: BodyCallback) {
+    export class DoActivityAction {
+        _cb: DoActivityCallback
+        interval_ms: number
+        counterIfPositive: number   // (<0): reseted, 0: reserved, (>0): to executie
+        constructor(ms: number, cb: DoActivityCallback) {
             this._cb = cb
-            this._ms = ms
-            this.nextTick = -1  // force callback
+            this.interval_ms = ms
+            this.counterIfPositive = -1  // reset
         }
-
-        /**
-         * execute DO
-         * @param tick the number of milliseconds elapsed since power on, control.millis().
-         */
-        execute(tick: number) {
-            if (tick > this.nextTick) {
-                this._cb()
-                this.nextTick = tick + this._ms // next
-            }
+        executeZero() {
+            this._cb(0) // counter = 0
         }
-    }
-
-    /**
-     * Transition
-     */
-    export class Transition {
-
-        /**
-         * array of state id, transition to.
-         */
-        toStateIdList: number[]
-
-        /**
-         * trigger id.
-         */
-        triggerId: number
-
-        /**
-         * execute Transition.
-         */
-        execute: BodyCallback
-
-        /**
-         * constructor
-         * @param toStateIdList array of state id, transition to
-         * @param triggerId trigger id
-         * @param cb run to code, body()
-         */
-        constructor(toStateIdList: number[], triggerId: number, cb: BodyCallback) {
-            this.toStateIdList = toStateIdList
-            this.triggerId = triggerId
-            this.execute = cb
-        }
-    }
-
-    export class State {
-
-        /**
-         * state id.
-         */
-        stateId: number
-
-        /**
-         * array of entry action
-         */
-        entryActions: EntryExitAction[]
-
-        /**
-         * array of do activity
-         */
-        doActivities: DoActivity[]
-
-        /**
-         * array of exit action
-         */
-        exitActions: EntryExitAction[]
-
-        /**
-         * array of transition
-         */
-        transitions: Transition[]
-
-        /**
-         * constructor
-         * @param stateId state ID
-         */
-        constructor(stateId: number) {
-            this.stateId = stateId
-            this.entryActions = []
-            this.doActivities = []
-            this.exitActions = []
-            this.transitions = []
-        }
-    }
-
-    /**
-     * trigger id and trigger args
-     */
-    class TriggerMessage {
-
-        /**
-         * trigger id.
-         */
-        triggerId: number
-
-        /**
-         * trigger args.
-         */
-        triggerArgs: number[]
-
-        /**
-         * constructor
-         * @param triggerId trigger id
-         * @param triggerArgs trigger args
-         */
-        constructor(triggerId: number, triggerArgs: number[]) {
-            this.triggerId = triggerId
-            this.triggerArgs = triggerArgs
-        }
-    }
-
-    enum ProcState {
-        Idle,
-        Start,
-        Into,
-        Enter,
-        Do,
-        CompletionTransit,
-        Pause,
-        TriggeredTransit,
-        Exit
-    }
-
-    export class StateMachine {
-
-        /**
-         * machine id
-         */
-        machineId: number
-
-        /**
-         * idle update callback.
-         */
-        _cbIdleUpdate: IdleUpdateCallback
-
-        /**
-         * next proc
-         */
-        _nextProc: ProcState
-
-        /**
-         * default state id for start.
-         */
-        _defaultStateId: number
-
-        /**
-         * array of state.
-         */
-        _states: State[]
-
-        /**
-         * current state
-         */
-        _currentState: State
-
-        /**
-         * trigger queues, array of TriggerMessage.
-         */
-        _triggerMessageQueues: TriggerMessage[]
-
-        // selectable taransition
-        selectedToAt: number   // >=0: selected, = -1 (TRANSITION_CANCELED): unselected
-
-        // current transition
-        _transitTo: number
-
-        // current trigger args
-        triggerArgs: number[]
-
-        // for timeout millis, reset on into.
-        tickOnInto: number
-
-        /**
-         * constructor
-         * @param machineId machine ID
-         * @param cbIdleUpdate idle update callback
-         */
-        constructor(machineId: number, cbIdleUpdate: IdleUpdateCallback) {
-            this.machineId = machineId
-            this._cbIdleUpdate = cbIdleUpdate
-            this._defaultStateId = mname.NONE_ID
-            this._states = []
-            this._currentState = undefined
-            this._triggerMessageQueues = []
-            this._transitTo = TRANSITION_CANCELED
-            this.triggerArgs = []
-            this.selectedToAt = TRANSITION_CANCELED
-            this._nextProc = ProcState.Idle
-        }
-
-        /**
-         * get State instance, or new.
-         * @param stateId state id
-         * @returns instance of State, undefined if mname.NONE_ID (INITIAL/FINAL state)
-         */
-        getStateOrNew(stateId: number) {
-            if (mname.NONE_ID == stateId) {
-                return undefined    // INITIAL/FINAL state
-            }
-            const obj = this._states.find(item => stateId == item.stateId)
-            if (obj) {
-                return obj
-            }
-            const newObj = new State(stateId)
-            this._states.push(newObj)
-            return newObj
-        }
-
-        // Transition
-        _doCallbackSelectable(transition: Transition, triggerArgs: number[]) {
-            this.selectedToAt = TRANSITION_CANCELED    // reset
-            this.triggerArgs = triggerArgs             // current trigger args
-            transition.execute()                       // callback
-            if (0 <= this.selectedToAt && transition.toStateIdList.length > this.selectedToAt) {
-                // selected
-                this._transitTo = transition.toStateIdList[this.selectedToAt]
+        executeIf(): boolean {
+            const counter = this.counterIfPositive
+            this.counterIfPositive = -1  // reset
+            if (0 < counter) {
+                this._cb(counter)
                 return true
             }
             return false
         }
+    }
 
-        // Completion Transition
-        _procCompletionTransition() {
-            const emptyArgs: number[] = []
-            // mname.NONE_ID: Completion Transition
-            const transitions = this._currentState.transitions.filter(item => mname.NONE_ID == item.triggerId)
-            for (const transition of transitions) {
-                if (this._doCallbackSelectable(transition, emptyArgs)) {
+    export class StateTransition {
+        triggerId: number
+        targetIdList: number[]
+        execute: BodyCallback
+        constructor(triggerId: number, targetIdList: number[], cb: BodyCallback) {
+            this.triggerId = triggerId
+            this.targetIdList = targetIdList
+            this.execute = cb
+        }
+    }
+    export class State {
+        stateId: number
+        entryActionList: BodyAction[]
+        doActivityList: DoActivityAction[]
+        exitActionList: BodyAction[]
+        stateTransitionList: StateTransition[]
+        constructor(stateId: number) {
+            this.stateId = stateId
+            this.entryActionList = []
+            this.doActivityList = []
+            this.exitActionList = []
+            this.stateTransitionList = []
+        }
+    }
+
+    class TriggerIdArgs {
+        triggerId: number
+        triggerArgs: number[]
+        constructor(triggerId: number, triggerArgs?: number[]) {
+            this.triggerId = triggerId
+            this.triggerArgs = triggerArgs || []
+        }
+    }
+
+    enum RunToCompletionStep {
+        WaitPoint,
+        EvalTrigger,
+        EvalCompletion,
+        Reached,
+    }
+
+    export class StateMachine {
+        static readonly TRAVERSE_AT_UNSELECTED = -1 // (default) unselected
+
+        machineId: number
+        _stateList: State[]
+        _triggerEventPool: TriggerIdArgs[]
+        triggerArgs: number[]
+        traverseAt: number   // >=0: selected, <0: unselected
+        _traversingTargetId: number
+        _currentState: State
+        _isDelayed: boolean
+
+        constructor(machineId: number) {
+            this._stateList = []
+            this._triggerEventPool = []
+            this.triggerArgs = []
+            this.traverseAt = StateMachine.TRAVERSE_AT_UNSELECTED
+            this._traversingTargetId = namestore.NONE_ID
+            this._isDelayed = false
+
+            this.machineId = machineId
+
+            const finalState = this.getStateOrNew(namestore.NONE_ID)
+            this._currentState = finalState
+        }
+
+        getStateOrNew(stateId: number) {
+            const obj = this._stateList.find(item => stateId == item.stateId)
+            if (obj) {
+                return obj
+            }
+            const newObj = new State(stateId)
+            this._stateList.push(newObj)
+            return newObj
+        }
+
+        _procDoActivityZero() {
+            for (const doActivity of this._currentState.doActivityList) {
+                doActivity.executeZero()
+            }
+        }
+
+        _procEvalDoCounter() {
+            let executed = false
+            for (const doActivity of this._currentState.doActivityList) {
+                if (doActivity.executeIf()) {
+                    executed = true
+                }
+            }
+            return executed
+        }
+
+        _evaluateStateTransition(props: TriggerIdArgs) {
+            // StarterTransition
+            if (namestore.NONE_ID == this._currentState.stateId) {
+                if (namestore.SYS_START_TRIGGER_ID == props.triggerId) {
+                    this._traversingTargetId = props.triggerArgs[0] || namestore.NONE_ID    // default state id, `start` function
+                    return true
+                }
+                return false
+            }
+            // StateTransition
+            const stateTransitionList = this._currentState.stateTransitionList.filter(item => props.triggerId == item.triggerId)
+            for (const stateTransition of stateTransitionList) {
+                this.traverseAt = StateMachine.TRAVERSE_AT_UNSELECTED   // reset
+                this.triggerArgs = props.triggerArgs                    // current trigger args
+                stateTransition.execute()                               // callback body(), evaluating
+                if (0 <= this.traverseAt && stateTransition.targetIdList.length > this.traverseAt) {
+                    this._traversingTargetId = stateTransition.targetIdList[this.traverseAt]
                     return true
                 }
             }
             return false
         }
 
-        // Triggered Transition
-        _procTriggeredTransition() {
-            while (0 < this._triggerMessageQueues.length) {
-                const queue = this._triggerMessageQueues.shift()
-                const transitions = this._currentState.transitions.filter(item => queue.triggerId == item.triggerId)
-                for (const transition of transitions) {
-                    if (this._doCallbackSelectable(transition, queue.triggerArgs)) {
-                        return true
-                    }
+        _procEvalCompletion() {
+            const trigger = new TriggerIdArgs(namestore.NONE_ID) // trigger for Completion Transition
+            return this._evaluateStateTransition(trigger)
+        }
+
+        _procEvalTrigger() {
+            while (0 < this._triggerEventPool.length) {
+                const trigger = this._triggerEventPool.shift()  // trigger from event pool
+                if (this._evaluateStateTransition(trigger)) {
+                    return true
                 }
             }
             return false
         }
 
-        /**
-         * update
-         */
-        update() {
-            let updating = true
-            do {
-                switch (this._nextProc) {
-                    case ProcState.Start:
-                        this._transitTo = this._defaultStateId
-                        this._nextProc = ProcState.Into
-                        break;
-                    case ProcState.Into:
-                        this._currentState = this.getStateOrNew(this._transitTo)
-                        this.tickOnInto = control.millis()
-                        if (this._currentState) {
-                            for (const v of this._currentState.doActivities) {
-                                v.nextTick = -1
-                            }
-                            this._nextProc = ProcState.Enter
+        runToCompletion() {
+            let nextStep: RunToCompletionStep
+            if (this._isDelayed) {
+                this._isDelayed = false
+                nextStep = RunToCompletionStep.EvalCompletion
+            } else {
+                nextStep = RunToCompletionStep.EvalTrigger
+            }
+            while (RunToCompletionStep.WaitPoint != nextStep) {
+                switch (nextStep) {
+                    case RunToCompletionStep.EvalTrigger:
+                        if (this._procEvalTrigger()) {
+                            nextStep = RunToCompletionStep.Reached
+                        } else if (this._procEvalDoCounter()) {
+                            nextStep = RunToCompletionStep.EvalCompletion
                         } else {
-                            // (INITIAL or FINAL)
-                            while (0 < this._triggerMessageQueues.length) {
-                                this._triggerMessageQueues.shift()
-                            }
-                            this._nextProc = ProcState.Idle
+                            nextStep = RunToCompletionStep.WaitPoint
                         }
                         break;
-                    case ProcState.Enter:
-                        for (const v of this._currentState.entryActions) {
+                    case RunToCompletionStep.EvalCompletion:
+                        if (this._procEvalCompletion()) {
+                            nextStep = RunToCompletionStep.Reached
+                        } else {
+                            nextStep = RunToCompletionStep.EvalTrigger
+                        }
+                        break;
+                    case RunToCompletionStep.Reached:
+                        for (const v of this._currentState.exitActionList) {
                             v.execute()
                         }
-                        this._nextProc = ProcState.Do
-                        break;
-                    case ProcState.Do:
-                        const tick = control.millis()
-                        for (const v of this._currentState.doActivities) {
-                            v.execute(tick)
+                        this._currentState = this.getStateOrNew(this._traversingTargetId)
+                        const intervalList: number[] = []
+                        for (const v of this._currentState.doActivityList) {
+                            v.counterIfPositive = -1  // clear
+                            intervalList.push(v.interval_ms)
                         }
-                        this._nextProc = ProcState.CompletionTransit
-                        break;
-                    case ProcState.CompletionTransit:
-                        if (this._procCompletionTransition()) {
-                            this._nextProc = ProcState.Exit
-                        } else {
-                            this._nextProc = ProcState.Pause
-                            updating = false    // break
-                        }
-                        break;
-                    case ProcState.Pause:
-                        this._nextProc = ProcState.TriggeredTransit
-                        break;
-                    case ProcState.TriggeredTransit:
-                        if (this._procTriggeredTransition()) {
-                            this._nextProc = ProcState.Exit
-                        } else {
-                            this._nextProc = ProcState.Do
-                        }
-                        break;
-                    case ProcState.Exit:
-                        for (const v of this._currentState.exitActions) {
+                        resetDoCounterSchedules(this.machineId, intervalList)
+                        for (const v of this._currentState.entryActionList) {
                             v.execute()
                         }
-                        this._nextProc = ProcState.Into
+                        this._procDoActivityZero()
+                        nextStep = RunToCompletionStep.WaitPoint
+                        this._isDelayed = true
+                        _cbQueueRunToCompletion(this.machineId)
                         break;
-                    case ProcState.Idle:
-                    default:
-                        updating = false    // break
+                    default:    // WaitPoint
                         break;
                 }
-            } while (updating)
-        }
-
-        /**
-         * start
-         * @param stateId state ID
-         * @returns started
-         */
-        start(stateId: number): boolean {
-            if (ProcState.Idle == this._nextProc) {
-                this._defaultStateId = stateId
-                this._nextProc = ProcState.Start
-                this._cbIdleUpdate()
-                return true
-            } else {
-                return false
             }
         }
 
-        /**
-         * send
-         * @param triggerId trigger ID
-         * @param triggerArgs  trigger args
-         */
+        start(stateId: number) {
+            this.send(namestore.SYS_START_TRIGGER_ID, [stateId])    // StarterTransition
+        }
+
+        setDoCounter(doActivityIndex: number, counter: number) {
+            const doActivity = this._currentState.doActivityList[doActivityIndex]
+            if (doActivity) {
+                doActivity.counterIfPositive = counter
+                _cbQueueRunToCompletion(this.machineId)
+            }
+        }
+
         send(triggerId: number, triggerArgs: number[]) {
-            if (ProcState.Idle != this._nextProc) {
-                // queuing
-                const queue = new TriggerMessage(triggerId, triggerArgs)
-                this._triggerMessageQueues.push(queue)
-                this._cbIdleUpdate()
-            }
+            this._triggerEventPool.push(new TriggerIdArgs(triggerId, triggerArgs))
+            _cbQueueRunToCompletion(this.machineId)
         }
     }
 
+    let _defineMachineState: [boolean, StateMachines, number] = [false, undefined, undefined]
+
+    export function defineState(machineId: number, stateId: number, body: () => void) {
+        _defineMachineState = [true, machineId, stateId]
+        body()
+        _defineMachineState = [false, undefined, undefined]
+    }
+
+    export function getDefineMachineState() {
+        return _defineMachineState
+    }
+
+    const _stateMachineList: mmachine.StateMachine[] = []
+
+    export function getStateMachine(machineId: number) {
+        const obj = _stateMachineList.find(item => machineId == item.machineId)
+        if (obj) {
+            return obj
+        }
+        const newObj = new mmachine.StateMachine(machineId)
+        _stateMachineList.push(newObj)
+        return newObj
+    }
+
+    export function getState(machineId: number, stateId: number): mmachine.State {
+        return getStateMachine(machineId).getStateOrNew(stateId)
+    }
+
+    export function runToCompletion(machineId: number) {
+        getStateMachine(machineId).runToCompletion()
+    }
+
+    class DoCounterSchedule {
+        machineId: number
+        doActivityIndex: number
+        interval: number
+        nextTimestamp: number
+        counter: number
+    }
+
+    let _doCounterScheduleList: DoCounterSchedule[] = []
+
+    function resetDoCounterSchedules(machineId: number, intervalList: number[]) {
+        const currentTimestamp = _cbGetElapsedMillis()
+        _doCounterScheduleList = _doCounterScheduleList.filter(item => machineId != item.machineId)
+        intervalList.forEach((value, index) => {
+            if (0 < value) {
+                const schedule = new DoCounterSchedule()
+                _doCounterScheduleList.push(schedule)
+                schedule.machineId = machineId
+                schedule.doActivityIndex = index
+                schedule.interval = value
+                schedule.nextTimestamp = currentTimestamp + schedule.interval
+                schedule.counter = 0
+            }
+        })
+    }
+
+    export function idleTick() {
+        const currentTimestamp = _cbGetElapsedMillis()
+        // do-counter scheduler
+        for (const schedule of _doCounterScheduleList) {
+            if (currentTimestamp >= schedule.nextTimestamp) {
+                while (currentTimestamp >= schedule.nextTimestamp) {
+                    schedule.nextTimestamp = schedule.nextTimestamp + schedule.interval
+                    schedule.counter = schedule.counter + 1
+                }
+                getStateMachine(schedule.machineId).setDoCounter(schedule.doActivityIndex, schedule.counter)
+            }
+        }
+    }
 }
