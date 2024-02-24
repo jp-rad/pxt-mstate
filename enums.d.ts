@@ -4,7 +4,7 @@
     /**
      * micro:bit Message Bus ID of listener : 1-65535
      * Custom Message Bus ID : 32768-65535
-     * https://github.com/jp-rad/pxt-ubit-extension/blob/master/doc/CustomMicroBit.h 
+     * https://github.com/jp-rad/pxt-ubit-extension/blob/master/doc/CustomMicroBit.h
      */
 
     declare const enum MSTATE_BUS_ID

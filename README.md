@@ -1,11 +1,18 @@
 
 > Open this page at GitHub Pages: [https://jp-rad.github.io/pxt-mstate/](https://jp-rad.github.io/pxt-mstate/)
 
-## Creating Extensions
+## Preface
 
-Extensions are PXT’s dynamic/static library mechanism for extending a target, such as the pxt-micro:bit:
+The pxt-mstate extension is a user-defined extension for micro:bit that enables state machine-based coding.
 
-* [MakeCode extensions](https://makecode.com/extensions)
+A state machine is a model that represents transitions from one state to another and can represent complex behavior in a simple way.
+Usually, state machines are drawn as state diagrams using tools such as UML, from which source code is generated.
+However, the pxt-mstate extension provides the ability to automatically generate state diagrams from coding.
+
+The pxt-mstate extension allows you to directly define states and transitions using block coding, and to traverse states in response to triggers.
+You can also visualize them in a state diagram to understand the behavior of your state machine.
+
+Get the pxt-mstate extension into your projects and enjoy programming with state machines! 😊.
 
 ## Use as Extension
 
@@ -38,36 +45,47 @@ This image may take a few minutes to refresh.
 **Example**
 
 ```javascript
-function blinkLED () {
+function blinkLED (enabled: boolean) {
+    if (!(enabled)) {
+        blink = 1
+    }
     led.setBrightness(blink * 155 + 100)
     blink += 1
     blink = blink % 2
 }
 input.onButtonPressed(Button.A, function () {
-    mstate.start(StateMachines.M1, "State1")
+    mstate.start(StateMachines.M0, "State1")
 })
-mstate.defineState(StateMachines.M1, "State1", function () {
+mstate.defineState(StateMachines.M0, "State1", function () {
     mstate.descriptionUml("Blink Heart Icon")
     mstate.declareEntry(function () {
-        blink = 0
-        basic.showIcon(IconNames.Heart)
+        blinkLED(false)
+        basic.showIcon(IconNames.Heart, 20)
     })
-    mstate.declareDo(500, function () {
-        blinkLED()
+    mstate.declareDoActivity(500, function (counter) {
+        if (0 < counter) {
+            blinkLED(true)
+        }
     })
     mstate.declareExit(function () {
-        led.setBrightness(255)
+        blinkLED(false)
         basic.showIcon(IconNames.Happy)
     })
     mstate.declareSimpleTransition("Trigger1", "")
 })
 input.onButtonPressed(Button.B, function () {
-    mstate.sendTrigger(StateMachines.M1, "Trigger1")
+    mstate.sendTrigger(StateMachines.M0, "Trigger1")
 })
 let blink = 0
-mstate.exportUml(StateMachines.M1, "State1")
+mstate.exportUml(StateMachines.M0, "State1")
+basic.showString("M")
 
 ```
+
+**UML**
+
+![A rendered view of UML](https://github.com/jp-rad/pxt-mstate/raw/master/.github/statics/uml.png)
+
 
 #### Metadata (used for search, rendering)
 
