@@ -4,7 +4,7 @@ namespace mstate
 {
 
     //%
-    void dummy_exportUml(int i, StringData *s)
+    void dummy_exportUml(int i, StringData *s, int j)
     {
         // only for the simulator
     }
@@ -22,7 +22,7 @@ namespace mstate
     }
 
     //%
-    StringData **dummy_simuLastDescriptionListUML()
+    StringData **dummy_simuLastDescriptionListUML(int i)
     {
         // only for the simulator
     }
@@ -34,7 +34,7 @@ namespace mstate
     }
 
     //%
-    void dummy_simuTransitionUml(int i, int j, int *a)
+    void dummy_simuTransitionUml(int i, int j)
     {
         // only for the simulator
     }
