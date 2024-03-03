@@ -1,3 +1,6 @@
+/// <reference path="mmachine.ts" />
+/// <reference path="mstateuml.ts" />
+
 enum StateMachines {
     M0 = 0,
     M1,
@@ -17,47 +20,29 @@ namespace mstate {
     /**
      * *device-dependent:* initialize and activate
      */
-    namespace startup {
-        // init - GetElapsedMillis
-        mmachine.initGetElapsedMillis(function () {
+    namespace deviceSetup {
+
+        mstate._doc = console.log
+
+        mmachine.getElapsedMillis = () =>
             // milliseconds
-            return control.millis()
-        })
+            control.millis()
 
-        // init - QueueRunToCompletion
-        mmachine.initQueueRunToCompletion(function (machineId: number) {
+        mmachine.queueRunToCompletion = (machineId: number) =>
             // raise event : post run-to-completion event queue for calling back runToCompletion()
-            return control.raiseEvent(MSTATE_BUS_ID.MSTATE_ID_UPDATE, machineId)
+            control.raiseEvent(MSTATE_BUS_ID.MSTATE_ID_UPDATE, machineId)
+
+        control.onEvent(MSTATE_BUS_ID.MSTATE_ID_UPDATE, 0, function () {
+            // on event : post run-to-completion event queue for calling back runToCompletion()
+            const machineId = control.eventValue()
+            mmachine.runToCompletion(machineId)
         })
 
-        /**
-         * activated flag
-         */
-        let _activatedStateMachine = false
-
-        /**
-         * activate StateMachine if unactivated
-         * @returns true-activated, false-already activated
-         */
-        export function activateStateMachine() {
-            if (_activatedStateMachine) {
-                // already activated
-                return false
-            }
-            control.onEvent(MSTATE_BUS_ID.MSTATE_ID_UPDATE, 0, function () {
-                // on event : post run-to-completion event queue for calling back runToCompletion()
-                const machineId = control.eventValue()
-                mmachine.runToCompletion(machineId)
-            })
-            basic.forever(function () {
-                // loop - 20ms
-                mmachine.idleTick()
-            })
-            return true
-        }
-
-        // UML, export
-        initOutputDoc(console.log)
+        basic.forever(function () {
+            //  do-counter : calling idleTick()
+            // loop - 20ms
+            mmachine.idleTick()
+        })
 
     }
 
@@ -78,7 +63,7 @@ namespace mstate {
             if (enabled) {
                 body()
                 // uml
-                _simuStateUml(machineId, stateId)
+                mstate._simuStateUml(machineId, stateId)
             }
         })
     }
@@ -94,9 +79,9 @@ namespace mstate {
     export function declareEntry(body: () => void) {
         const [enabled, machineId, stateId] = mmachine.getDefineMachineState()
         if (enabled) {
-            mmachine.getState(machineId, stateId).entryActionList.push(new mmachine.BodyAction(body))
+            mmachine.getState(machineId, stateId).entryActionList.push(body)
             // uml
-            _simuStateUml(machineId, stateId)
+            mstate._simuStateUml(machineId, stateId)
         }
     }
 
@@ -116,9 +101,9 @@ namespace mstate {
         const [enabled, machineId, stateId] = mmachine.getDefineMachineState()
         if (enabled) {
             if (mmachine.namestore.NONE_ID != stateId) {
-                mmachine.getState(machineId, stateId).doActivityList.push(new mmachine.DoActivityAction(aEvery, body))
+                mmachine.getState(machineId, stateId).doActivityList.push(new mmachine.DoActivity(aEvery, body))
                 // uml
-                _simuStateUml(machineId, stateId)
+                mstate._simuStateUml(machineId, stateId)
             }
         }
     }
@@ -134,9 +119,9 @@ namespace mstate {
     export function declareExit(body: () => void) {
         const [enabled, machineId, stateId] = mmachine.getDefineMachineState()
         if (enabled) {
-            mmachine.getState(machineId, stateId).exitActionList.push(new mmachine.BodyAction(body))
+            mmachine.getState(machineId, stateId).exitActionList.push(body)
             // uml
-            _simuStateUml(machineId, stateId)
+            mstate._simuStateUml(machineId, stateId)
         }
     }
 
@@ -181,7 +166,7 @@ namespace mstate {
             }
             mmachine.getState(machineId, stateId).stateTransitionList.push(new mmachine.StateTransition(triggerId, targetIdList, body))
             // uml
-            _simuTransitionUml(machineId, stateId)
+            mstate._simuTransitionUml(machineId, stateId)
         }
     }
 
@@ -254,32 +239,28 @@ namespace mstate {
     //% weight=80
     //% group="Command"
     export function start(aStateMachine: StateMachines, aStateName: string) {
-        startup.activateStateMachine()
         const stateId = mmachine.namestore.getNameIdOrNew(aStateName)
-        mmachine.getStateMachine(aStateMachine).start(stateId)
+        mmachine.getStateMachine(aStateMachine).send(mmachine.namestore.SYS_START_TRIGGER_ID, [stateId])    // StarterTransition
     }
 
     /**
      * UML, export
      * @param aStateMachine StateMachines
      * @param aStateName default state name
-     * @param aTriggerTable output trigger table
-     * @param aStateDiagram output state-diagram
+     * @param aMode output state-diagram, trigger table, JSON-diagram
      */
-    //% block="(UML) $aStateMachine $aStateName||table:$aTriggerTable|diagram:$aStateDiagram"
+    //% block="(UML) $aStateMachine $aStateName||$aMode"
     //% inlineInputMode=inline
     //% aStateMachine.defl=StateMachines.M0
     //% aStateName.defl="a"
-    //% aTriggerTable.shadow="toggleOnOff"
-    //% aTriggerTable.defl=true
-    //% aStateDiagram.shadow="toggleOnOff"
-    //% aStateDiagram.defl=true
+    //% aMode.defl=ModeExportUML.Both
     //% weight=70
     //% group="UML"
-    export function exportUml(aStateMachine: StateMachines, aStateName: string, aTriggerTable: boolean = true, aStateDiagram: boolean = true) {
+    //% advanced=true
+    //% shim=mstate::dummy_exportUml
+    export function exportUml(aStateMachine: StateMachines, aStateName: string, aMode: ModeExportUML = ModeExportUML.Both) {
         // uml
-        const bitFlag = (aTriggerTable ? 2 : 0) | (aStateDiagram ? 1 : 0)
-        _simuExportUml(aStateMachine, aStateName, bitFlag)
+        mstate._simuExportUml(aStateMachine, aStateName, aMode)
     }
 
     /**
@@ -290,9 +271,11 @@ namespace mstate {
     //% aDescription.defl="a"
     //% weight=60
     //% group="UML"
+    //% advanced=true
+    //% shim=mstate::dummy_descriptionUml
     export function descriptionUml(aDescription: string) {
         // uml
-        _simuDescriptionUml(aDescription)
+        mstate._simuDescriptionUml(aDescription)
     }
 
     /**
@@ -302,9 +285,11 @@ namespace mstate {
     //% block="(UML) descriptions $aDescriptionList"
     //% weight=50
     //% group="UML"
+    //% advanced=true
+    //% shim=mstate::dummy_descriptionsUml
     export function descriptionsUml(aDescriptionList: string[]) {
         // uml
-        _simuDescriptionsUml(aDescriptionList)
+        mstate._simuDescriptionsUml(aDescriptionList)
     }
 
 }

@@ -23,27 +23,19 @@
 namespace mmachine {
     export type GetElapsedMillisCallback = () => number
 
-    let _cbGetElapsedMillis: GetElapsedMillisCallback
-
-    export function initGetElapsedMillis(cb: GetElapsedMillisCallback) {
-        if (cb) {
-            _cbGetElapsedMillis = cb
-        } else {
-            _cbGetElapsedMillis = () => 0
-        }
-    }
+    /**
+     * *device-dependent:* getElapsedMillis;
+     * gets the number of milliseconds elapsed since power on.
+     */
+    export let getElapsedMillis: GetElapsedMillisCallback // = () => 0
 
     export type QueueRunToCompletionCallback = (machineId: number) => void
 
-    let _cbQueueRunToCompletion: QueueRunToCompletionCallback
-
-    export function initQueueRunToCompletion(cb: QueueRunToCompletionCallback) {
-        if (cb) {
-            _cbQueueRunToCompletion = cb
-        } else {
-            _cbQueueRunToCompletion = (machineId: number) => { }
-        }
-    }
+    /**
+     * *device-dependent:* queueRunToCompletion;
+     * post run-to-completion event queue for calling back runToCompletion()
+     */
+    export let queueRunToCompletion: QueueRunToCompletionCallback // = (machineId: number) => { }
 
     export namespace namestore {
         export const SYS_START_TRIGGER_ID = -1  // StarterTransition
@@ -61,34 +53,22 @@ namespace mmachine {
         }
     }
 
-    export type BodyCallback = () => void
-
-    export class BodyAction {
-        execute: BodyCallback
-        constructor(cb: BodyCallback) {
-            this.execute = cb
-        }
-    }
-
     export type DoActivityCallback = (counter: number) => void
 
-    export class DoActivityAction {
-        _cb: DoActivityCallback
+    export class DoActivity {
         interval_ms: number
         counterIfPositive: number   // (<0): reseted, 0: reserved, (>0): to executie
+        execute: DoActivityCallback
         constructor(ms: number, cb: DoActivityCallback) {
-            this._cb = cb
             this.interval_ms = ms
             this.counterIfPositive = -1  // reset
-        }
-        executeZero() {
-            this._cb(0) // counter = 0
+            this.execute = cb
         }
         executeIf(): boolean {
             const counter = this.counterIfPositive
             this.counterIfPositive = -1  // reset
             if (0 < counter) {
-                this._cb(counter)
+                this.execute(counter)
                 return true
             }
             return false
@@ -98,18 +78,19 @@ namespace mmachine {
     export class StateTransition {
         triggerId: number
         targetIdList: number[]
-        execute: BodyCallback
-        constructor(triggerId: number, targetIdList: number[], cb: BodyCallback) {
+        execute: Action
+        constructor(triggerId: number, targetIdList: number[], cb: Action) {
             this.triggerId = triggerId
             this.targetIdList = targetIdList
             this.execute = cb
         }
     }
+
     export class State {
         stateId: number
-        entryActionList: BodyAction[]
-        doActivityList: DoActivityAction[]
-        exitActionList: BodyAction[]
+        entryActionList: Action[]
+        doActivityList: DoActivity[]
+        exitActionList: Action[]
         stateTransitionList: StateTransition[]
         constructor(stateId: number) {
             this.stateId = stateId
@@ -172,12 +153,6 @@ namespace mmachine {
             return newObj
         }
 
-        _procDoActivityZero() {
-            for (const doActivity of this._currentState.doActivityList) {
-                doActivity.executeZero()
-            }
-        }
-
         _procEvalDoCounter() {
             let executed = false
             for (const doActivity of this._currentState.doActivityList) {
@@ -211,11 +186,6 @@ namespace mmachine {
             return false
         }
 
-        _procEvalCompletion() {
-            const trigger = new TriggerIdArgs(namestore.NONE_ID) // trigger for Completion Transition
-            return this._evaluateStateTransition(trigger)
-        }
-
         _procEvalTrigger() {
             while (0 < this._triggerEventPool.length) {
                 const trigger = this._triggerEventPool.shift()  // trigger from event pool
@@ -246,16 +216,19 @@ namespace mmachine {
                         }
                         break;
                     case RunToCompletionStep.EvalCompletion:
-                        if (this._procEvalCompletion()) {
+                        const trigger = new TriggerIdArgs(namestore.NONE_ID) // trigger for Completion Transition
+                        if (this._evaluateStateTransition(trigger)) {
                             nextStep = RunToCompletionStep.Reached
                         } else {
                             nextStep = RunToCompletionStep.EvalTrigger
                         }
                         break;
                     case RunToCompletionStep.Reached:
-                        for (const v of this._currentState.exitActionList) {
-                            v.execute()
+                        // exit
+                        for (const cb of this._currentState.exitActionList) {
+                            cb()
                         }
+                        // changing
                         this._currentState = this.getStateOrNew(this._traversingTargetId)
                         const intervalList: number[] = []
                         for (const v of this._currentState.doActivityList) {
@@ -263,13 +236,17 @@ namespace mmachine {
                             intervalList.push(v.interval_ms)
                         }
                         resetDoCounterSchedules(this.machineId, intervalList)
-                        for (const v of this._currentState.entryActionList) {
-                            v.execute()
+                        // entry
+                        for (const cb of this._currentState.entryActionList) {
+                            cb()
                         }
-                        this._procDoActivityZero()
+                        // doActivity zero
+                        for (const doActivity of this._currentState.doActivityList) {
+                            doActivity.execute(0)   // counter = 0
+                        }
                         nextStep = RunToCompletionStep.WaitPoint
                         this._isDelayed = true
-                        _cbQueueRunToCompletion(this.machineId)
+                        queueRunToCompletion(this.machineId)
                         break;
                     default:    // WaitPoint
                         break;
@@ -277,21 +254,9 @@ namespace mmachine {
             }
         }
 
-        start(stateId: number) {
-            this.send(namestore.SYS_START_TRIGGER_ID, [stateId])    // StarterTransition
-        }
-
-        setDoCounter(doActivityIndex: number, counter: number) {
-            const doActivity = this._currentState.doActivityList[doActivityIndex]
-            if (doActivity) {
-                doActivity.counterIfPositive = counter
-                _cbQueueRunToCompletion(this.machineId)
-            }
-        }
-
         send(triggerId: number, triggerArgs: number[]) {
             this._triggerEventPool.push(new TriggerIdArgs(triggerId, triggerArgs))
-            _cbQueueRunToCompletion(this.machineId)
+            queueRunToCompletion(this.machineId)
         }
     }
 
@@ -338,7 +303,7 @@ namespace mmachine {
     let _doCounterScheduleList: DoCounterSchedule[] = []
 
     function resetDoCounterSchedules(machineId: number, intervalList: number[]) {
-        const currentTimestamp = _cbGetElapsedMillis()
+        const currentTimestamp = getElapsedMillis()
         _doCounterScheduleList = _doCounterScheduleList.filter(item => machineId != item.machineId)
         intervalList.forEach((value, index) => {
             if (0 < value) {
@@ -354,7 +319,7 @@ namespace mmachine {
     }
 
     export function idleTick() {
-        const currentTimestamp = _cbGetElapsedMillis()
+        const currentTimestamp = getElapsedMillis()
         // do-counter scheduler
         for (const schedule of _doCounterScheduleList) {
             if (currentTimestamp >= schedule.nextTimestamp) {
@@ -362,7 +327,11 @@ namespace mmachine {
                     schedule.nextTimestamp = schedule.nextTimestamp + schedule.interval
                     schedule.counter = schedule.counter + 1
                 }
-                getStateMachine(schedule.machineId).setDoCounter(schedule.doActivityIndex, schedule.counter)
+                const doActivity = getStateMachine(schedule.machineId)._currentState.doActivityList[schedule.doActivityIndex]
+                if (doActivity) {
+                    doActivity.counterIfPositive = schedule.counter
+                    queueRunToCompletion(schedule.machineId)
+                }
             }
         }
     }
