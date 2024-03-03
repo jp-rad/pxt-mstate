@@ -1,4 +1,28 @@
+enum ModeExportUML {
+    //% block="Diagram and Table"
+    Both = 3,
+    //% block="State Diagram"
+    StateDiagram = 1,
+    //% block="Trigger Table"
+    TriggerTable = 2,
+    //% block="(JSON)"
+    JsonDiagram = 0,
+}
+
 namespace mstate {
+
+    export type OutputDocCallback = (value: any) => void
+
+    /**
+     * *device-dependent:* (internal) UML, export UML
+     */
+    export let _doc: OutputDocCallback = (value: any) => { }
+
+    /**
+     * (internal) UML, description stack
+     * for the simulator
+     */
+    const _lastDescriptionList: string[] = []
 
     /**
      * (internal) UML, convert id (number) to state/trigger name (string)
@@ -15,12 +39,6 @@ namespace mstate {
         }
         return name
     }
-
-    /**
-     * (internal) UML, description stack
-     * for the simulator
-     */
-    const _lastDescriptionList: string[] = []
 
     /**
      * (internal) UML, description
@@ -40,7 +58,7 @@ namespace mstate {
     export function _simuDescriptionsUml(aDescriptionList: string[]) {
         // for the simulator
         for (const s of aDescriptionList) {
-            descriptionUml(s)
+            _simuDescriptionUml(s)
         }
     }
 
@@ -95,18 +113,6 @@ namespace mstate {
         const stateTransition = state.stateTransitionList[(state.stateTransitionList.length - 1)]
         const stateTransitionObj: any = stateTransition
         stateTransitionObj["targetDescList"] = _simuLastDescriptionListUML(stateTransition.targetIdList.length)
-    }
-
-    export type OutputDocCallback = (value: any) => void
-
-    let _doc: OutputDocCallback
-
-    export function initOutputDoc(cb: OutputDocCallback) {
-        if (cb) {
-            _doc = cb
-        } else {
-            _doc = (value: any) => { }
-        }
     }
 
     /**

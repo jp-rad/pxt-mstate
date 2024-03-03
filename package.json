@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "pxt-microbit": "6.0.25"
+  }
+}
