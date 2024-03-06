@@ -69,7 +69,7 @@ namespace mstate {
      * declare entry action.
      * @param body code to run
      */
-    //% block="mstate on entry"
+    //% block="on entry"
     //% handlerStatement
     //% weight=170
     //% group="Declare"
@@ -86,7 +86,7 @@ namespace mstate {
      * @param aEvery interval time (milliseconds)
      * @param body code to run
      */
-    //% block="mstate on do every $aEvery ms $counter"
+    //% block="on do every $aEvery ms $counter"
     //% aEvery.shadow="timePicker"
     //% aEvery.defl=1000
     //% handlerStatement
@@ -105,7 +105,7 @@ namespace mstate {
      * declare exit action.
      * @param body code to run
      */
-    //% block="mstate on exit"
+    //% block="on exit"
     //% handlerStatement
     //% weight=150
     //% group="Declare"
@@ -122,7 +122,7 @@ namespace mstate {
      * @param aTriggerName trigger name
      * @param aTargetName target state name
      */
-    //% block="mstate transition trigger $aTriggerName target $aTargetName"
+    //% block="on trigger $aTriggerName target $aTargetName"
     //% aTriggerName.defl="e"
     //% aTargetName.defl="a"
     //% weight=140
@@ -139,7 +139,7 @@ namespace mstate {
      * @param aTargetNameList array of target state name 
      * @param body code to run
      */
-    //% block="mstate transition trigger $aTriggerName targets $aTargetNameList"
+    //% block="on trigger $aTriggerName targets $aTargetNameList"
     //% aTriggerName.defl="e"
     //% draggableParameters="reporter"
     //% handlerStatement
@@ -162,7 +162,7 @@ namespace mstate {
      * get trigger args.
      * @param aStateMachine StateMachines
      */
-    //% block="mstate $aStateMachine trigger args"
+    //% block="$aStateMachine trigger args"
     //% aStateMachine.defl=StateMachines.M0
     //% weight=120
     //% group="Transition"
@@ -176,7 +176,7 @@ namespace mstate {
      * @param aStateMachine StateMachines
      * @param index target index, cancled = (-1)
      */
-    //% block="mstate $aStateMachine traverse at $index"
+    //% block="traverse $aStateMachine at $index"
     //% aStateMachine.defl=StateMachines.M0
     //% index.defl=0
     //% weight=110
