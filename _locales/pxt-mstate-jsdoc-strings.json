@@ -1,7 +1,6 @@
 {
   "MSTATE_BUS_ID": "micro:bit Message Bus ID of listener : 1-65535\nCustom Message Bus ID : 32768-65535\nhttps://github.com/jp-rad/pxt-ubit-extension/blob/master/doc/CustomMicroBit.h",
   "MSTATE_BUS_ID.MSTATE_ID_UPDATE": "MState Update Event Bus ID.\n(32768 + 1024 + 5 = 33797)",
-  "mmachine.getElapsedMillis": "*device-dependent:* getElapsedMillis;\ngets the number of milliseconds elapsed since power on.",
   "mmachine.queueRunToCompletion": "*device-dependent:* queueRunToCompletion;\npost run-to-completion event queue for calling back runToCompletion()",
   "mstate": "mstate blocks: The pxt-mstate extension is a user-defined extension for micro:bit that simplifies state machine coding and visualization using block coding and state diagrams.",
   "mstate._doc": "*device-dependent:* (internal) UML, export UML",
