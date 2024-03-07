@@ -97,9 +97,9 @@ namespace mmachine {
     class TriggerIdArgs {
         triggerId: number
         triggerArgs: number[]
-        constructor(triggerId: number, triggerArgs?: number[]) {
+        constructor(triggerId: number, triggerArgs: number[]) {
             this.triggerId = triggerId
-            this.triggerArgs = triggerArgs || []
+            this.triggerArgs = triggerArgs
         }
     }
 
@@ -160,7 +160,7 @@ namespace mmachine {
             // StarterTransition
             if (namestore.NONE_ID == this._currentState.stateId) {
                 if (namestore.SYS_START_TRIGGER_ID == props.triggerId) {
-                    this._traversingTargetId = props.triggerArgs[0] || namestore.NONE_ID    // default state id, `start` function
+                    this._traversingTargetId = props.triggerArgs[0] // default state id, `start` function
                     return true
                 }
                 return false
@@ -204,7 +204,7 @@ namespace mmachine {
                         }
                         break;
                     case RunToCompletionStep.EvalCompletion:
-                        const trigger = new TriggerIdArgs(namestore.NONE_ID) // trigger for Completion Transition
+                        const trigger = new TriggerIdArgs(namestore.NONE_ID, undefined) // trigger for Completion Transition
                         if (this._evaluateStateTransition(trigger)) {
                             nextStep = RunToCompletionStep.Reached
                         } else {
