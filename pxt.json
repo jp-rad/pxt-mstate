@@ -1,6 +1,6 @@
 {
     "name": "pxt-mstate",
-    "version": "0.9.2",
+    "version": "0.9.3",
     "description": "The pxt-mstate extension is a user-defined extension for micro:bit that simplifies state machine coding and visualization using block coding and state diagrams.",
     "license": "MIT",
     "dependencies": {
