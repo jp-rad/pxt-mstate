@@ -45,7 +45,25 @@ This image may take a few minutes to refresh.
 **Example**
 
 ```javascript
-function blinkLED (enabled: boolean) {
+mstate.defineState(StateMachines.M0, "State1", function () {
+    mstate.descriptionUml("Blink Heart Icon")
+    mstate.onState(500, function (tickcount) {
+        if (0 == tickcount) {
+            blinkLED(false)
+            basic.showIcon(IconNames.Heart, 20)
+        } else {
+            blinkLED(true)
+        }
+    })
+    mstate.onExit(function () {
+        blinkLED(false)
+        basic.showIcon(IconNames.Happy)
+    })
+    mstate.onTrigger("Trigger1", [""], function () {
+        mstate.traverse(StateMachines.M0, 0)
+    })
+})
+function blinkLED(enabled: boolean) {
     if (!(enabled)) {
         blink = 1
     }
@@ -56,25 +74,8 @@ function blinkLED (enabled: boolean) {
 input.onButtonPressed(Button.A, function () {
     mstate.start(StateMachines.M0, "State1")
 })
-mstate.defineState(StateMachines.M0, "State1", function () {
-    mstate.descriptionUml("Blink Heart Icon")
-    mstate.declareEntry(function () {
-        blinkLED(false)
-        basic.showIcon(IconNames.Heart, 20)
-    })
-    mstate.declareDoActivity(500, function (counter) {
-        if (0 < counter) {
-            blinkLED(true)
-        }
-    })
-    mstate.declareExit(function () {
-        blinkLED(false)
-        basic.showIcon(IconNames.Happy)
-    })
-    mstate.declareSimpleTransition("Trigger1", "")
-})
 input.onButtonPressed(Button.B, function () {
-    mstate.sendTrigger(StateMachines.M0, "Trigger1")
+    mstate.send(StateMachines.M0, "Trigger1")
 })
 let blink = 0
 mstate.exportUml(StateMachines.M0, "State1")
